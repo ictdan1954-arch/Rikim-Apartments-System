@@ -115,7 +115,6 @@ async function loadMembers() {
                 </tbody>
             </table>`;
 
-        // Expose functions globally
         window.editStaffMember = editStaffMember;
         window.paySalary = paySalary;
         window.createCaretakerAccount = createCaretakerAccount;
@@ -190,7 +189,6 @@ async function openAddModal() {
 }
 
 async function editStaffMember(memberId) {
-    // Fetch current member data
     const response = await apiService.get(`/staff/members/${memberId}`);
     if (!response.success) {
         showToast('Could not fetch member details', 'error');
@@ -198,7 +196,6 @@ async function editStaffMember(memberId) {
     }
     const member = response.data;
 
-    // Fetch roles for dropdown
     const rolesRes = await apiService.get('/staff/roles');
     const roles = rolesRes.success ? rolesRes.data : [];
 
@@ -266,7 +263,7 @@ async function editStaffMember(memberId) {
             loadMembers();
         } catch (e) {
             showToast(e.message, 'error');
-            return false; // keep modal open
+            return false;
         }
     });
 }
@@ -274,36 +271,45 @@ async function editStaffMember(memberId) {
 async function createCaretakerAccount(staffId, name, phone) {
     const { showFormModal } = await import('../../components/modal.js');
     const defaultPassword = phone.replace(/\D/g, '').slice(-6) || '123456';
-    
+    const defaultUsername = name.toLowerCase().replace(/\s+/g, '') + '_' + phone.slice(-4);
+
     const formHtml = `
         <p>Create a caretaker login account for <strong>${name}</strong>.</p>
         <p>Phone: <strong>${phone}</strong></p>
         <div class="form-group">
+            <label class="form-label">Username <span class="required">*</span></label>
+            <input type="text" class="form-input" id="caretaker-username" value="${defaultUsername}" required>
+            <small class="text-muted">Used for login instead of phone number.</small>
+        </div>
+        <div class="form-group">
             <label class="form-label">Password</label>
-            <input type="text" class="form-input" id="caretaker-password" value="${defaultPassword}" readonly>
+            <input type="password" class="form-input" id="caretaker-password" value="${defaultPassword}" readonly>
             <small class="text-muted">
-                Default password is the last 6 digits of the phone number. 
-                The caretaker should change it after first login.
+                Default password is the last 6 digits of the phone number.
             </small>
         </div>`;
 
     showFormModal('Create Caretaker Account', formHtml, async (overlay) => {
+        const username = overlay.querySelector('#caretaker-username').value.trim();
         const password = overlay.querySelector('#caretaker-password').value;
+
+        if (!username) {
+            showToast('Username is required', 'error');
+            return false;
+        }
+
         try {
             await apiService.post('/auth/register', {
                 full_name: name,
                 phone: phone,
                 password: password,
-                role: 'caretaker'
+                role: 'caretaker',
+                username: username
             });
-            showToast(`Caretaker account created! Password: ${password}`, 'success');
+            showToast(`Caretaker account created! Username: ${username}`, 'success');
+            loadMembers();
         } catch (e) {
-            // If user already exists, show a helpful message
-            if (e.message.includes('already exists')) {
-                showToast('A user with this phone number already exists. Use a different phone or delete the existing user.', 'error');
-            } else {
-                showToast(e.message, 'error');
-            }
+            showToast(e.message, 'error');
             return false;
         }
     });
