@@ -131,16 +131,22 @@ async function loadCaretakers(apartmentId) {
                             <td>${c.users?.email || '-'}</td>
                             <td>${formatDate(c.assigned_at)}</td>
                             <td>
-                                <button class="btn btn-sm btn-danger" onclick="removeCaretaker('${c.id}')">
-                                    <i class="fas fa-trash"></i> Remove
-                                </button>
+                                <div class="table-actions">
+                                    <button onclick="window.editCaretakerAccount('${c.users?.id}', '${c.users?.full_name}', '${apartmentId}')" title="Edit Account">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="danger" onclick="window.removeCaretaker('${c.id}')" title="Remove">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     `).join('')}
                 </tbody>
             </table>`;
 
-        // Attach global remove handler
+        // Attach global functions
+        window.editCaretakerAccount = (userId, currentName, aptId) => editCaretakerAccount(userId, currentName, aptId);
         window.removeCaretaker = (assignmentId) => removeCaretakerHandler(assignmentId, apartmentId);
     } catch (error) {
         document.getElementById('caretakers-list').innerHTML = `
@@ -162,9 +168,6 @@ async function openAssignCaretaker(apartmentId) {
         return;
     }
 
-    // Filter out already assigned caretakers? For now, show all.
-    // We'll let the backend reject duplicates.
-
     const formHtml = `
         <div class="form-group">
             <label class="form-label">Select Caretaker</label>
@@ -182,7 +185,49 @@ async function openAssignCaretaker(apartmentId) {
             loadCaretakers(apartmentId);
         } catch (e) {
             showToast(e.message, 'error');
-            return false; // keep modal open
+            return false;
+        }
+    });
+}
+
+async function editCaretakerAccount(userId, currentName, apartmentId) {
+    const { showFormModal } = await import('../../components/modal.js');
+    const formHtml = `
+        <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" class="form-input" id="edit-user-name" value="${currentName}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">New Password (leave blank to keep current)</label>
+            <input type="password" class="form-input" id="edit-user-password" placeholder="Min 6 characters">
+        </div>
+        <p class="text-muted">Leave password empty if you only want to change the name.</p>`;
+
+    showFormModal('Edit Caretaker Account', formHtml, async (overlay) => {
+        const full_name = overlay.querySelector('#edit-user-name').value.trim();
+        const password = overlay.querySelector('#edit-user-password').value.trim();
+
+        if (!full_name) {
+            showToast('Name is required', 'error');
+            return false;
+        }
+
+        const body = { full_name };
+        if (password) {
+            if (password.length < 6) {
+                showToast('Password must be at least 6 characters', 'error');
+                return false;
+            }
+            body.password = password;
+        }
+
+        try {
+            await apiService.put(`/auth/users/${userId}`, body);
+            showToast('Caretaker account updated!', 'success');
+            loadCaretakers(apartmentId);
+        } catch (e) {
+            showToast(e.message, 'error');
+            return false;
         }
     });
 }
