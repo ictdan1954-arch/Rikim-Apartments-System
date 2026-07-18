@@ -6,8 +6,16 @@ const rentController = {
     // Record rent payment
     async create(req, res) {
         try {
-            const { tenant_id, unit_id, apartment_id, amount_paid, payment_date, period_start, period_end, payment_method, reference_number, notes } = req.body;
-            const missing = validateRequired(req.body, ['tenant_id', 'unit_id', 'apartment_id', 'amount_paid', 'payment_date', 'period_start', 'period_end', 'payment_method']);
+            const { 
+                tenant_id, unit_id, apartment_id, amount_paid, payment_date, 
+                period_start, period_end, payment_method, reference_number, 
+                notes, purpose 
+            } = req.body;
+
+            const missing = validateRequired(req.body, [
+                'tenant_id', 'unit_id', 'apartment_id', 'amount_paid', 
+                'payment_date', 'period_start', 'period_end', 'payment_method'
+            ]);
             if (missing.length > 0) {
                 return ApiResponse.badRequest(res, `Missing fields: ${missing.join(', ')}`);
             }
@@ -25,14 +33,15 @@ const rentController = {
                     payment_method,
                     reference_number: reference_number || null,
                     recorded_by: req.user.id,
-                    notes: notes || null
+                    notes: notes || null,
+                    purpose: purpose || 'monthly_rent'   // default
                 }])
                 .select('*')
                 .single();
 
             if (error) throw error;
 
-            // Create notification for overdue check
+            // Create notification
             await supabase.from('notifications').insert([{
                 user_id: req.user.id,
                 title: 'Rent Payment Recorded',
@@ -42,11 +51,12 @@ const rentController = {
 
             return ApiResponse.created(res, payment, 'Rent payment recorded successfully');
         } catch (error) {
+            console.error('Create payment error:', error);
             return ApiResponse.error(res, 'Failed to record payment');
         }
     },
 
-    // Get all payments for an apartment
+    // Get payments for an apartment (or all for landlord)
     async getByApartment(req, res) {
         try {
             const { apartmentId } = req.params;
@@ -58,8 +68,27 @@ const rentController = {
                     *,
                     tenants:tenant_id(id, full_name, phone),
                     units:unit_id(id, unit_number)
-                `)
-                .eq('apartment_id', apartmentId);
+                `);
+
+            // Handle 'all' – show all apartments for landlord, restrict for caretaker
+            if (apartmentId !== 'all') {
+                query = query.eq('apartment_id', apartmentId);
+            } else {
+                // If caretaker, restrict to assigned apartments
+                if (req.user.role === 'caretaker') {
+                    const { data: assignments } = await supabase
+                        .from('caretaker_assignments')
+                        .select('apartment_id')
+                        .eq('user_id', req.user.id)
+                        .eq('is_active', true);
+                    const apartmentIds = assignments?.map(a => a.apartment_id) || [];
+                    if (apartmentIds.length === 0) {
+                        return ApiResponse.success(res, []);
+                    }
+                    query = query.in('apartment_id', apartmentIds);
+                }
+                // Landlord sees all
+            }
 
             if (start_date) query = query.gte('payment_date', start_date);
             if (end_date) query = query.lte('payment_date', end_date);
@@ -71,6 +100,7 @@ const rentController = {
 
             return ApiResponse.success(res, payments);
         } catch (error) {
+            console.error('Fetch payments error:', error);
             return ApiResponse.error(res, 'Failed to fetch payments');
         }
     },
@@ -105,7 +135,6 @@ const rentController = {
         try {
             const { tenantId } = req.params;
 
-            // Get tenant and unit info
             const { data: tenant } = await supabase
                 .from('tenants')
                 .select('*, units:unit_id(monthly_rent)')
@@ -116,7 +145,6 @@ const rentController = {
                 return ApiResponse.notFound(res, 'Tenant not found');
             }
 
-            // Get all payments
             const { data: payments } = await supabase
                 .from('rent_payments')
                 .select('amount_paid, period_start, period_end')
@@ -124,7 +152,6 @@ const rentController = {
 
             const totalPaid = payments?.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0) || 0;
 
-            // Calculate months since lease start
             const leaseStart = new Date(tenant.lease_start_date);
             const now = new Date();
             const monthsDiff = (now.getFullYear() - leaseStart.getFullYear()) * 12 +
@@ -153,7 +180,10 @@ const rentController = {
             const { id } = req.params;
             const updateData = {};
 
-            const allowedFields = ['amount_paid', 'payment_date', 'period_start', 'period_end', 'payment_method', 'reference_number', 'notes'];
+            const allowedFields = [
+                'amount_paid', 'payment_date', 'period_start', 'period_end', 
+                'payment_method', 'reference_number', 'notes', 'purpose'
+            ];
             allowedFields.forEach(field => {
                 if (req.body[field] !== undefined) {
                     updateData[field] = req.body[field];
