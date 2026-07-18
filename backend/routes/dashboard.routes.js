@@ -9,5 +9,6 @@ router.use(authenticate);
 router.get('/landlord', authorize('landlord'), dashboardController.landlordDashboard);
 router.get('/caretaker', authorize('caretaker'), dashboardController.caretakerDashboard);
 router.get('/tenant', authorize('tenant'), dashboardController.tenantDashboard);
+router.get('/staff', authorize('staff'), dashboardController.staffDashboard);
 
 module.exports = router;
