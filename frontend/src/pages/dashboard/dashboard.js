@@ -61,15 +61,27 @@ function renderAdminDashboard(container, data, role) {
             </button>
         </div>` : ''}
 
+        <!-- Caretaker: Show assigned apartment details -->
+        ${role === 'caretaker' ? `
+        <div class="card mb-2">
+            <div class="card-header">
+                <h3 class="card-title">My Assigned Apartment${data.total_apartments > 1 ? 's' : ''}</h3>
+            </div>
+            <div id="caretaker-apartments">
+                <p class="text-muted p-2">Loading apartments…</p>
+            </div>
+        </div>` : ''}
+
         <!-- Stats Cards -->
         <div class="dashboard-stats">
+            ${role === 'landlord' ? `
             <div class="stat-card">
                 <div class="stat-icon primary"><i class="fas fa-building"></i></div>
                 <div class="stat-info">
                     <div class="stat-value">${data.total_apartments}</div>
                     <div class="stat-label">Apartments</div>
                 </div>
-            </div>
+            </div>` : ''}
             <div class="stat-card">
                 <div class="stat-icon success"><i class="fas fa-home"></i></div>
                 <div class="stat-info">
@@ -135,6 +147,40 @@ function renderAdminDashboard(container, data, role) {
             </div>
         </div>
     `;
+
+    // If caretaker, fetch and display their assigned apartments
+    if (role === 'caretaker') {
+        fetchCaretakerApartments();
+    }
+}
+
+async function fetchCaretakerApartments() {
+    try {
+        const res = await apiService.get('/apartments');
+        if (!res.success || !res.data.length) {
+            const el = document.getElementById('caretaker-apartments');
+            if (el) el.innerHTML = `<p class="text-muted p-2">No apartment assigned yet.</p>`;
+            return;
+        }
+
+        const apartments = res.data;
+        const html = apartments.map(a => `
+            <div class="info-card mb-1" onclick="window.router.navigate('/apartments/${a.id}')" style="cursor:pointer;">
+                <div class="info-card-icon"><i class="fas fa-building"></i></div>
+                <div class="info-card-content">
+                    <h4>${a.name}</h4>
+                    <p>${a.location}</p>
+                </div>
+                <span class="badge badge-${a.status === 'active' ? 'success' : 'secondary'}">${a.status}</span>
+            </div>
+        `).join('');
+
+        const el = document.getElementById('caretaker-apartments');
+        if (el) el.innerHTML = html;
+    } catch (e) {
+        const el = document.getElementById('caretaker-apartments');
+        if (el) el.innerHTML = `<p class="text-muted p-2">Could not load apartments.</p>`;
+    }
 }
 
 function renderTenantDashboard(container, data) {
@@ -150,7 +196,6 @@ function renderTenantDashboard(container, data) {
 
     const t = data.tenant;
     const p = data.payment_summary;
-    const arrearsClass = p.arrears > 0 ? 'arrears-alert' : '';
     
     container.innerHTML = `
         <div class="tenant-dashboard">
