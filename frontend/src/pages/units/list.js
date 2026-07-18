@@ -7,11 +7,9 @@ import { CONFIG } from '../../config/constants.js';
 
 export default async function unitsList(container, params) {
     let apartmentId = params.apartmentId;
-    // If "all", let user pick or show all (we'll do simple approach: fetch apartments first)
     container.innerHTML = `<div class="page-loader"><div class="spinner"></div></div>`;
 
     if (apartmentId === 'all') {
-        // Show apartment selector
         const aptResponse = await apiService.get('/apartments');
         if (!aptResponse.success) return;
         const apartments = aptResponse.data;
@@ -19,7 +17,7 @@ export default async function unitsList(container, params) {
             container.innerHTML = `<div class="empty-state"><h3>No apartments</h3></div>`;
             return;
         }
-        apartmentId = apartments[0].id; // Default first
+        apartmentId = apartments[0].id;
         renderPage(container, apartmentId, apartments);
     } else {
         renderPage(container, apartmentId);
@@ -81,20 +79,72 @@ async function loadUnits(apartmentId) {
                             <td>${u.current_tenant ? u.current_tenant.full_name : '-'}</td>
                             <td>
                                 <div class="table-actions">
-                                    <button onclick="editUnit('${u.id}')" title="Edit"><i class="fas fa-edit"></i></button>
-                                    <button class="danger" onclick="deleteUnit('${u.id}')" title="Delete"><i class="fas fa-trash"></i></button>
+                                    <button onclick="window.editUnit('${u.id}')" title="Edit"><i class="fas fa-edit"></i></button>
+                                    <button class="danger" onclick="window.deleteUnit('${u.id}')" title="Delete"><i class="fas fa-trash"></i></button>
+                                    ${u.status === 'vacant' ? `<button class="btn btn-sm btn-outline assign-tenant-btn" data-unit-id="${u.id}" title="Assign Tenant"><i class="fas fa-user-plus"></i></button>` : ''}
                                 </div>
                             </td>
                         </tr>`).join('')}
                 </tbody>
             </table>`;
+
+        // Attach global edit/delete functions (backward compatibility)
         window.editUnit = (id) => editUnit(id, apartmentId);
         window.deleteUnit = (id) => deleteUnit(id, apartmentId);
+
+        // Event delegation for assign tenant button
+        table.addEventListener('click', (e) => {
+            const assignBtn = e.target.closest('.assign-tenant-btn');
+            if (assignBtn) {
+                const unitId = assignBtn.dataset.unitId;
+                openAssignTenantModal(unitId, apartmentId);
+            }
+        });
+
     } catch (error) {
         document.getElementById('units-table').innerHTML = `<div class="error-state"><p>${error.message}</p></div>`;
     }
 }
 
+async function openAssignTenantModal(unitId, apartmentId) {
+    const { showFormModal } = await import('../../components/modal.js');
+    // Fetch active tenants – for caretaker, filter by their apartment(s)
+    let query = '?status=active';
+    if (authService.getRole() === 'caretaker') {
+        query += `&apartment_id=${apartmentId}`;
+    }
+    const tenantsRes = await apiService.get(`/tenants${query}`);
+    const tenants = tenantsRes.success ? tenantsRes.data : [];
+
+    if (tenants.length === 0) {
+        showToast('No active tenants available', 'warning');
+        return;
+    }
+
+    const formHtml = `
+        <p>Assign a tenant to this unit.</p>
+        <div class="form-group">
+            <label class="form-label">Select Tenant</label>
+            <select class="form-select" id="assign-tenant">
+                ${tenants.map(t => `<option value="${t.id}">${t.full_name} (${t.phone})</option>`).join('')}
+            </select>
+        </div>`;
+
+    showFormModal('Assign Tenant', formHtml, async (overlay) => {
+        const tenantId = overlay.querySelector('#assign-tenant').value;
+        try {
+            // Fetch the tenant's current unit (if any) to free it up later (backend handles unit status swap)
+            await apiService.put(`/tenants/${tenantId}`, { unit_id: unitId });
+            showToast('Tenant assigned successfully', 'success');
+            loadUnits(apartmentId);
+        } catch (e) {
+            showToast(e.message, 'error');
+            return false;
+        }
+    });
+}
+
+// The rest of the functions (openAddModal, editUnit, deleteUnit) remain exactly as before.
 function openAddModal(apartmentId) {
     const formHtml = `
         <div class="form-group">
@@ -140,7 +190,6 @@ function openAddModal(apartmentId) {
 }
 
 async function editUnit(unitId, apartmentId) {
-    // Similar implementation for edit - fetch unit, show modal, update
     const response = await apiService.get(`/units/${unitId}`);
     if (!response.success) return;
     const u = response.data;
