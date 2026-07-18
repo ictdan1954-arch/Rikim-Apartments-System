@@ -24,6 +24,11 @@ export default async function staffMembers(container) {
             </div>
         </div>`;
 
+    const filterApt = container.querySelector('#filter-apt');
+    const filterRole = container.querySelector('#filter-role');
+    const addBtn = container.querySelector('#add-member-btn');
+    const membersTable = container.querySelector('#members-table');
+
     const [aptRes, rolesRes] = await Promise.all([
         apiService.get('/apartments'),
         apiService.get('/staff/roles')
@@ -31,100 +36,113 @@ export default async function staffMembers(container) {
 
     if (aptRes.success) {
         aptRes.data.forEach(a => {
-            document.getElementById('filter-apt').innerHTML += 
-                `<option value="${a.id}">${a.name}</option>`;
+            filterApt.innerHTML += `<option value="${a.id}">${a.name}</option>`;
         });
     }
     if (rolesRes.success) {
         rolesRes.data.forEach(r => {
-            document.getElementById('filter-role').innerHTML += 
-                `<option value="${r.id}">${r.role_name}</option>`;
+            filterRole.innerHTML += `<option value="${r.id}">${r.role_name}</option>`;
         });
     }
 
-    document.getElementById('filter-apt').addEventListener('change', loadMembers);
-    document.getElementById('filter-role').addEventListener('change', loadMembers);
-    document.getElementById('add-member-btn').addEventListener('click', openAddModal);
+    filterApt.addEventListener('change', () => loadMembers());
+    filterRole.addEventListener('change', () => loadMembers());
+    addBtn.addEventListener('click', () => openAddModal());
 
-    await loadMembers();
-}
+    // Initial load
+    loadMembers();
 
-async function loadMembers() {
-    const aptId = document.getElementById('filter-apt').value;
-    const roleId = document.getElementById('filter-role').value;
+    async function loadMembers() {
+        const aptId = filterApt.value;
+        const roleId = filterRole.value;
 
-    if (!aptId) {
-        document.getElementById('members-table').innerHTML = 
-            `<p class="text-center p-3">Select an apartment to view staff.</p>`;
-        return;
-    }
-
-    let query = `apartment/${aptId}`;
-    if (roleId) query += `?role_id=${roleId}`;
-
-    try {
-        const response = await apiService.get(`/staff/members/${query}`);
-        const members = response.success ? response.data : [];
-        const table = document.getElementById('members-table');
-
-        if (members.length === 0) {
-            table.innerHTML = `<div class="empty-state"><h3>No staff members</h3></div>`;
+        if (!aptId) {
+            membersTable.innerHTML = `<p class="text-center p-3">Select an apartment to view staff.</p>`;
             return;
         }
 
-        table.innerHTML = `
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Role</th>
-                        <th>Phone</th>
-                        <th>Salary</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${members.map(m => `
+        let query = `apartment/${aptId}`;
+        if (roleId) query += `?role_id=${roleId}`;
+
+        try {
+            const response = await apiService.get(`/staff/members/${query}`);
+            const members = response.success ? response.data : [];
+
+            if (members.length === 0) {
+                membersTable.innerHTML = `<div class="empty-state"><h3>No staff members</h3></div>`;
+                return;
+            }
+
+            membersTable.innerHTML = `
+                <table class="table">
+                    <thead>
                         <tr>
-                            <td>${m.full_name}</td>
-                            <td>${m.staff_roles?.role_name || 'N/A'}</td>
-                            <td>${m.phone}</td>
-                            <td>${formatCurrency(m.monthly_salary)}</td>
-                            <td>
-                                <span class="badge badge-${m.status === 'active' ? 'success' : 'danger'}">
-                                    ${m.status}
-                                </span>
-                            </td>
-                            <td>
-                                <div class="table-actions">
-                                    <button onclick="editStaffMember('${m.id}')" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button onclick="paySalary('${m.id}','${m.full_name}','${aptId}')" title="Pay Salary">
-                                        <i class="fas fa-money-bill"></i>
-                                    </button>
-                                    <button onclick="createCaretakerAccount('${m.id}','${m.full_name}','${m.phone}')" 
-                                            title="Create Caretaker Account">
-                                        <i class="fas fa-user-plus"></i>
-                                    </button>
-                                </div>
-                            </td>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Phone</th>
+                            <th>Salary</th>
+                            <th>Status</th>
+                            <th>Actions</th>
                         </tr>
-                    `).join('')}
-                </tbody>
-            </table>`;
+                    </thead>
+                    <tbody>
+                        ${members.map(m => `
+                            <tr>
+                                <td>${m.full_name}</td>
+                                <td>${m.staff_roles?.role_name || 'N/A'}</td>
+                                <td>${m.phone}</td>
+                                <td>${formatCurrency(m.monthly_salary)}</td>
+                                <td>
+                                    <span class="badge badge-${m.status === 'active' ? 'success' : 'danger'}">
+                                        ${m.status}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="edit-btn" data-id="${m.id}" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="pay-btn" data-id="${m.id}" data-name="${m.full_name}" data-apt="${aptId}" title="Pay Salary">
+                                            <i class="fas fa-money-bill"></i>
+                                        </button>
+                                        <button class="caretaker-btn" data-id="${m.id}" data-name="${m.full_name}" data-phone="${m.phone}" title="Create Caretaker Account">
+                                            <i class="fas fa-user-plus"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>`;
 
-        window.editStaffMember = editStaffMember;
-        window.paySalary = paySalary;
-        window.createCaretakerAccount = createCaretakerAccount;
+            // Add event listeners using delegation
+            membersTable.addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.edit-btn');
+                if (editBtn) {
+                    editStaffMember(editBtn.dataset.id);
+                    return;
+                }
+                const payBtn = e.target.closest('.pay-btn');
+                if (payBtn) {
+                    paySalary(payBtn.dataset.id, payBtn.dataset.name, payBtn.dataset.apt);
+                    return;
+                }
+                const caretakerBtn = e.target.closest('.caretaker-btn');
+                if (caretakerBtn) {
+                    createCaretakerAccount(caretakerBtn.dataset.id, caretakerBtn.dataset.name, caretakerBtn.dataset.phone);
+                    return;
+                }
+            });
 
-    } catch (e) {
-        document.getElementById('members-table').innerHTML = 
-            `<div class="error-state"><p>${e.message}</p></div>`;
+        } catch (e) {
+            membersTable.innerHTML = `<div class="error-state"><p>${e.message}</p></div>`;
+        }
     }
 }
 
+// =============================================
+// MODAL FUNCTIONS (scoped, no global DOM)
+// =============================================
 async function openAddModal() {
     const { showFormModal } = await import('../../components/modal.js');
     const [aptRes, rolesRes] = await Promise.all([
@@ -159,8 +177,7 @@ async function openAddModal() {
         </div>
         <div class="form-group">
             <label class="form-label">Date Hired</label>
-            <input type="date" class="form-input" id="mem-date" 
-                   value="${new Date().toISOString().split('T')[0]}">
+            <input type="date" class="form-input" id="mem-date" value="${new Date().toISOString().split('T')[0]}">
         </div>`;
 
     showFormModal('Add Staff Member', formHtml, async (overlay) => {
@@ -220,8 +237,7 @@ async function editStaffMember(memberId) {
         </div>
         <div class="form-group">
             <label class="form-label">Monthly Salary (KES)</label>
-            <input type="number" class="form-input" id="edit-salary" 
-                   value="${member.monthly_salary}" step="100" min="0">
+            <input type="number" class="form-input" id="edit-salary" value="${member.monthly_salary}" step="100" min="0">
         </div>
         <div class="form-group">
             <label class="form-label">Status</label>
@@ -283,10 +299,14 @@ async function createCaretakerAccount(staffId, name, phone) {
         </div>
         <div class="form-group">
             <label class="form-label">Password</label>
-            <input type="password" class="form-input" id="caretaker-password" value="${defaultPassword}" readonly>
-            <small class="text-muted">
-                Default password is the last 6 digits of the phone number.
-            </small>
+            <div style="position: relative;">
+                <input type="password" class="form-input" id="caretaker-password" value="${defaultPassword}" readonly style="padding-right: 40px;">
+                <button type="button" class="password-toggle" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;"
+                        onclick="const pwd = document.getElementById('caretaker-password'); if(pwd.type === 'password') { pwd.type = 'text'; this.innerHTML = '<i class=\\'fas fa-eye-slash\\'></i>'; } else { pwd.type = 'password'; this.innerHTML = '<i class=\\'fas fa-eye\\'></i>'; }">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+            <small class="text-muted">Default password is the last 6 digits of the phone number.</small>
         </div>`;
 
     showFormModal('Create Caretaker Account', formHtml, async (overlay) => {
@@ -325,8 +345,7 @@ function paySalary(staffId, name, aptId) {
             </div>
             <div class="form-group">
                 <label class="form-label">Payment Date</label>
-                <input type="date" class="form-input" id="sal-date" 
-                       value="${new Date().toISOString().split('T')[0]}">
+                <input type="date" class="form-input" id="sal-date" value="${new Date().toISOString().split('T')[0]}">
             </div>
             <div class="form-group">
                 <label class="form-label">Period Start</label>
