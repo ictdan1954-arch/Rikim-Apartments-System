@@ -18,6 +18,9 @@ router.get('/members/:id', authorize('landlord', 'caretaker'), staffController.g
 router.put('/members/:id', authorize('landlord', 'caretaker'), staffController.updateMember);
 router.delete('/members/:id', authorize('landlord', 'caretaker'), staffController.deleteMember);
 
+// Staff User Accounts (create login for staff members)
+router.post('/accounts', authorize('landlord', 'caretaker'), staffController.createStaffAccount);
+
 // Staff Salaries
 router.post('/salaries', authorize('landlord', 'caretaker'), staffController.recordSalary);
 router.get('/salaries/apartment/:apartmentId', authorize('landlord', 'caretaker'), staffController.getSalaries);
