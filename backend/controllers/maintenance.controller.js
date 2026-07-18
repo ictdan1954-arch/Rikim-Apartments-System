@@ -232,7 +232,7 @@ const maintenanceController = {
     // Add comment
     async createComment(req, res) {
         try {
-            const { request_id } = req.params;
+            const { id } = req.params;                     // corrected
             const { comment } = req.body;
             if (!comment || !comment.trim()) {
                 return ApiResponse.badRequest(res, 'Comment is required');
@@ -241,7 +241,7 @@ const maintenanceController = {
             const { data: newComment, error } = await supabase
                 .from('maintenance_comments')
                 .insert([{
-                    request_id,
+                    request_id: id,
                     user_id: req.user.id,
                     comment: comment.trim()
                 }])
@@ -254,7 +254,7 @@ const maintenanceController = {
             const { data: request } = await supabase
                 .from('maintenance_requests')
                 .select('reported_by, apartment_id')
-                .eq('id', request_id)
+                .eq('id', id)
                 .single();
 
             if (request) {
@@ -296,11 +296,11 @@ const maintenanceController = {
     // Get comments for a request
     async getComments(req, res) {
         try {
-            const { request_id } = req.params;
+            const { id } = req.params;                     // corrected
             const { data: comments, error } = await supabase
                 .from('maintenance_comments')
                 .select('*, user:user_id(id, full_name, role)')
-                .eq('request_id', request_id)
+                .eq('request_id', id)
                 .order('created_at', { ascending: true });
 
             if (error) throw error;
