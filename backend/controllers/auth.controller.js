@@ -177,6 +177,50 @@ const authController = {
         } catch (error) {
             return ApiResponse.error(res, 'Failed to fetch users');
         }
+    },
+
+    // Update user (Landlord only, for managing caretaker/tenant accounts)
+    async updateUser(req, res) {
+        try {
+            const { userId } = req.params;
+            const { full_name, password } = req.body;
+
+            // Only landlord can update other users
+            if (req.user.role !== 'landlord') {
+                return ApiResponse.forbidden(res, 'Only landlord can update user accounts');
+            }
+
+            const updateData = {};
+            if (full_name) updateData.full_name = full_name;
+            if (password) {
+                const passwordError = validatePassword(password);
+                if (passwordError) {
+                    return ApiResponse.badRequest(res, passwordError);
+                }
+                const salt = await bcrypt.genSalt(10);
+                updateData.password_hash = await bcrypt.hash(password, salt);
+            }
+
+            if (Object.keys(updateData).length === 0) {
+                return ApiResponse.badRequest(res, 'No fields to update');
+            }
+
+            const { data: user, error } = await supabase
+                .from('users')
+                .update(updateData)
+                .eq('id', userId)
+                .select('id, full_name, email, phone, role')
+                .single();
+
+            if (error) {
+                console.error('Update user error:', error);
+                return ApiResponse.error(res, 'Failed to update user');
+            }
+
+            return ApiResponse.success(res, user, 'User updated successfully');
+        } catch (error) {
+            return ApiResponse.error(res, 'Failed to update user');
+        }
     }
 };
 
