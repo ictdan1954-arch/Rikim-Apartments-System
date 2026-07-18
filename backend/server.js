@@ -15,7 +15,8 @@ const expenseRoutes = require('./routes/expense.routes');
 const staffRoutes = require('./routes/staff.routes');
 const maintenanceRoutes = require('./routes/maintenance.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
-const notificationRoutes = require('./routes/notification.routes'); // NEW
+const notificationRoutes = require('./routes/notification.routes');
+const announcementRoutes = require('./routes/announcement.routes'); // NEW
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,7 +55,8 @@ app.use('/api/expenses', expenseRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/notifications', notificationRoutes); // NEW
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/announcements', announcementRoutes); // NEW
 
 // =============================================
 // 404 HANDLER
