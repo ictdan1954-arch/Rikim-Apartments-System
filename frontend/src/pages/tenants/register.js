@@ -1,13 +1,29 @@
 import { apiService } from '../../services/api.service.js';
+import { authService } from '../../services/auth.service.js';
 import { showToast } from '../../components/toast.js';
 import { router } from '../../router.js';
-import { CONFIG } from '../../config/constants.js';
 import { capitalize } from '../../utils/formatters.js';
 
 export default async function registerTenant(container) {
-    // Fetch apartments and their units for dropdowns
-    const aptResponse = await apiService.get('/apartments');
-    const apartments = aptResponse.success ? aptResponse.data : [];
+    const role = authService.getRole();
+
+    let apartments = [];
+    let defaultAptId = null;
+    let defaultAptName = '';
+
+    if (role === 'caretaker') {
+        // Fetch caretaker's assigned apartments (should be one)
+        const res = await apiService.get('/apartments');
+        if (res.success && res.data.length > 0) {
+            defaultAptId = res.data[0].id;
+            defaultAptName = res.data[0].name;
+            apartments = res.data; // still needed for the dropdown?
+        }
+    } else {
+        // Landlord sees all apartments
+        const res = await apiService.get('/apartments');
+        apartments = res.success ? res.data : [];
+    }
 
     container.innerHTML = `
         <div class="card" style="max-width: 700px; margin: 0 auto;">
@@ -34,15 +50,19 @@ export default async function registerTenant(container) {
                     </div>
                     <div class="form-group">
                         <label class="form-label">Apartment <span class="required">*</span></label>
-                        <select class="form-select" id="t-apartment" required>
-                            <option value="">Select apartment</option>
-                            ${apartments.map(a => `<option value="${a.id}">${a.name}</option>`).join('')}
+                        <select class="form-select" id="t-apartment" ${role === 'caretaker' ? 'disabled' : ''}>
+                            ${role === 'caretaker' 
+                                ? `<option value="${defaultAptId}" selected>${defaultAptName}</option>`
+                                : `<option value="">Select apartment</option>` + apartments.map(a => `<option value="${a.id}">${a.name}</option>`).join('')
+                            }
                         </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Unit <span class="required">*</span></label>
-                        <select class="form-select" id="t-unit" required disabled>
-                            <option value="">Select apartment first</option>
+                        <select class="form-select" id="t-unit" required ${role === 'caretaker' ? '' : 'disabled'}>
+                            ${role === 'caretaker' 
+                                ? `<option value="">Select unit</option>` // will be populated immediately
+                                : `<option value="">Select apartment first</option>`}
                         </select>
                     </div>
                     <div class="form-group">
@@ -61,40 +81,71 @@ export default async function registerTenant(container) {
             </form>
         </div>`;
 
-    // Load units when apartment changes
-    document.getElementById('t-apartment').addEventListener('change', async (e) => {
-        const aptId = e.target.value;
+    // Load units for the initially selected apartment (caretaker's or landlord's first)
+    const selectedAptId = role === 'caretaker' ? defaultAptId : null;
+    if (selectedAptId) {
+        loadUnits(selectedAptId);
+    } else if (role === 'landlord') {
+        // For landlord, enable the apartment dropdown to load units on change
+        const aptSelect = document.getElementById('t-apartment');
+        aptSelect.disabled = false;
+        aptSelect.addEventListener('change', (e) => {
+            const aptId = e.target.value;
+            if (aptId) loadUnits(aptId);
+            else resetUnitSelect();
+        });
+    }
+
+    async function loadUnits(apartmentId) {
         const unitSelect = document.getElementById('t-unit');
         unitSelect.disabled = true;
-        unitSelect.innerHTML = '<option>Loading...</option>';
-        
-        const response = await apiService.get(`/units/apartment/${aptId}`);
-        if (response.success) {
-            const vacantUnits = response.data.filter(u => u.status === 'vacant');
-            unitSelect.innerHTML = '<option value="">Select unit</option>' + 
-                vacantUnits.map(u => `<option value="${u.id}">${u.unit_number} - ${capitalize(u.unit_type)} (${u.monthly_rent}/=)</option>`).join('');
-            unitSelect.disabled = false;
+        unitSelect.innerHTML = '<option>Loading…</option>';
+        try {
+            const response = await apiService.get(`/units/apartment/${apartmentId}`);
+            if (response.success) {
+                const vacantUnits = response.data.filter(u => u.status === 'vacant');
+                if (vacantUnits.length === 0) {
+                    unitSelect.innerHTML = '<option value="">No vacant units</option>';
+                } else {
+                    unitSelect.innerHTML = '<option value="">Select unit</option>' + 
+                        vacantUnits.map(u => `<option value="${u.id}">${u.unit_number} - ${capitalize(u.unit_type)} (KES ${u.monthly_rent})</option>`).join('');
+                }
+            } else {
+                unitSelect.innerHTML = '<option value="">Error loading units</option>';
+            }
+        } catch (e) {
+            unitSelect.innerHTML = '<option value="">Error loading units</option>';
         }
-    });
+        unitSelect.disabled = false;
+    }
+
+    function resetUnitSelect() {
+        const unitSelect = document.getElementById('t-unit');
+        unitSelect.innerHTML = '<option value="">Select apartment first</option>';
+        unitSelect.disabled = true;
+    }
 
     document.getElementById('tenant-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = {
-            full_name: document.getElementById('t-name').value,
-            phone: document.getElementById('t-phone').value,
-            email: document.getElementById('t-email').value,
-            id_number: document.getElementById('t-idnumber').value,
+            full_name: document.getElementById('t-name').value.trim(),
+            phone: document.getElementById('t-phone').value.trim(),
+            email: document.getElementById('t-email').value.trim(),
+            id_number: document.getElementById('t-idnumber').value.trim(),
             unit_id: document.getElementById('t-unit').value,
             lease_start_date: document.getElementById('t-start').value,
-            deposit_paid: parseFloat(document.getElementById('t-deposit').value)
+            deposit_paid: parseFloat(document.getElementById('t-deposit').value) || 0
         };
+
         if (!data.full_name || !data.phone || !data.unit_id) {
-            showToast('Please fill all required fields', 'error');
+            showToast('Fill all required fields', 'error');
             return;
         }
+
         try {
             const response = await apiService.post('/tenants', data);
-            showToast(`Tenant registered! Default password: ${response.data.default_password}`, 'success');
+            const { username, default_password } = response.data;
+            showToast(`Tenant registered! Username: ${username} | Password: ${default_password}`, 'success');
             router.navigate('/tenants');
         } catch (error) {
             showToast(error.message, 'error');
