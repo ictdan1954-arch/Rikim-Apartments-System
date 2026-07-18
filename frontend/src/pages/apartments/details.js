@@ -133,10 +133,16 @@ async function loadCaretakers(apartmentId) {
                             <td>${formatDate(c.assigned_at)}</td>
                             <td>
                                 <div class="table-actions">
-                                    <button onclick="window.editCaretakerAccount('${c.users?.id}', '${c.users?.full_name}', '${c.users?.username || ''}', '${apartmentId}')" title="Edit Account">
+                                    <button class="edit-caretaker-btn" 
+                                            data-user-id="${c.users?.id}" 
+                                            data-full-name="${c.users?.full_name}" 
+                                            data-username="${c.users?.username || ''}" 
+                                            title="Edit Account">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="danger" onclick="window.removeCaretaker('${c.id}')" title="Remove">
+                                    <button class="danger remove-caretaker-btn" 
+                                            data-assignment-id="${c.id}" 
+                                            title="Remove">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -146,8 +152,25 @@ async function loadCaretakers(apartmentId) {
                 </tbody>
             </table>`;
 
-        window.editCaretakerAccount = (userId, currentName, currentUsername, aptId) => editCaretakerAccount(userId, currentName, currentUsername, aptId);
-        window.removeCaretaker = (assignmentId) => removeCaretakerHandler(assignmentId, apartmentId);
+        // Event delegation
+        container.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-caretaker-btn');
+            if (editBtn) {
+                const userId = editBtn.dataset.userId;
+                const fullName = editBtn.dataset.fullName;
+                const username = editBtn.dataset.username;
+                editCaretakerAccount(userId, fullName, username, apartmentId);
+                return;
+            }
+
+            const removeBtn = e.target.closest('.remove-caretaker-btn');
+            if (removeBtn) {
+                const assignmentId = removeBtn.dataset.assignmentId;
+                removeCaretakerHandler(assignmentId, apartmentId);
+                return;
+            }
+        });
+
     } catch (error) {
         document.getElementById('caretakers-list').innerHTML = `
             <div class="error-state"><p>${error.message}</p></div>`;
