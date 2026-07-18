@@ -33,7 +33,7 @@ const tenantController = {
             const password_hash = await bcrypt.hash(defaultPassword, salt);
 
             // Generate a unique username
-            const autoUsername = full_name.toLowerCase().replace(/\s+/g, '') + '_' + phone.slice(-4);
+            let autoUsername = full_name.toLowerCase().replace(/\s+/g, '') + '_' + phone.slice(-4);
 
             const { data: user, error: userError } = await supabase
                 .from('users')
@@ -43,17 +43,16 @@ const tenantController = {
                     email: email || null,
                     password_hash,
                     role: 'tenant',
-                    username: autoUsername      // set username
+                    username: autoUsername
                 }])
                 .select('id')
                 .single();
 
             if (userError) {
-                // Could be duplicate phone or username – try without username
+                // Could be duplicate phone or username – retry with random suffix
                 if (userError.code === '23505') {
-                    // If duplicate key, generate username with random suffix
                     const randomSuffix = Math.random().toString(36).substring(2, 6);
-                    const altUsername = autoUsername + '_' + randomSuffix;
+                    autoUsername = autoUsername + '_' + randomSuffix;
                     const { data: user2, error: retryError } = await supabase
                         .from('users')
                         .insert([{
@@ -62,7 +61,7 @@ const tenantController = {
                             email: email || null,
                             password_hash,
                             role: 'tenant',
-                            username: altUsername
+                            username: autoUsername
                         }])
                         .select('id')
                         .single();
@@ -71,7 +70,6 @@ const tenantController = {
                         return ApiResponse.error(res, 'Failed to create tenant user account');
                     }
                     user = user2;
-                    autoUsername = altUsername; // update for response
                 } else {
                     console.error('Tenant user creation error:', userError);
                     return ApiResponse.error(res, 'Failed to create tenant user account');
@@ -120,7 +118,7 @@ const tenantController = {
             return ApiResponse.created(res, {
                 tenant,
                 default_password: defaultPassword,
-                username: autoUsername             // include username in response
+                username: autoUsername
             }, 'Tenant registered successfully');
 
         } catch (error) {
@@ -210,12 +208,56 @@ const tenantController = {
             const { id } = req.params;
             const updateData = {};
 
-            const allowedFields = ['full_name', 'phone', 'email', 'id_number', 'lease_end_date', 'deposit_paid', 'status'];
+            // Allow unit_id to be updated
+            const allowedFields = ['full_name', 'phone', 'email', 'id_number', 'lease_end_date', 'deposit_paid', 'status', 'unit_id'];
             allowedFields.forEach(field => {
                 if (req.body[field] !== undefined) {
                     updateData[field] = req.body[field];
                 }
             });
+
+            // If unit_id is being changed, handle unit statuses
+            if (req.body.unit_id) {
+                // Get current tenant data
+                const { data: currentTenant } = await supabase
+                    .from('tenants')
+                    .select('unit_id, status')
+                    .eq('id', id)
+                    .single();
+
+                if (currentTenant && currentTenant.unit_id !== req.body.unit_id) {
+                    // Old unit becomes vacant
+                    await supabase
+                        .from('units')
+                        .update({ status: 'vacant' })
+                        .eq('id', currentTenant.unit_id);
+
+                    // Check if the new unit is available
+                    const { data: newUnit } = await supabase
+                        .from('units')
+                        .select('status')
+                        .eq('id', req.body.unit_id)
+                        .single();
+
+                    if (!newUnit) {
+                        return ApiResponse.badRequest(res, 'New unit not found');
+                    }
+                    if (newUnit.status !== 'vacant') {
+                        // Revert old unit status
+                        await supabase
+                            .from('units')
+                            .update({ status: currentTenant.status === 'active' ? 'occupied' : 'vacant' })
+                            .eq('id', currentTenant.unit_id);
+                        return ApiResponse.badRequest(res, 'New unit is not vacant');
+                    }
+
+                    // New unit becomes occupied
+                    await supabase
+                        .from('units')
+                        .update({ status: 'occupied' })
+                        .eq('id', req.body.unit_id);
+                }
+            }
 
             const { data: tenant, error } = await supabase
                 .from('tenants')
