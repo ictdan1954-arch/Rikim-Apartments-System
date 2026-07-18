@@ -1,5 +1,5 @@
 import { authService } from '../services/auth.service.js';
-import { apiService } from '../services/api.service.js'; // added
+import { apiService } from '../services/api.service.js';
 import { router } from '../router.js';
 
 export async function setupSidebar() {
@@ -27,10 +27,8 @@ export async function setupSidebar() {
                 sections.forEach(section => {
                     const titleEl = section.querySelector('.nav-section-title');
                     if (titleEl && titleEl.textContent === 'PROPERTIES') {
-                        // Clear existing links
                         const existingLinks = section.querySelectorAll('.nav-link');
                         existingLinks.forEach(link => link.remove());
-                        // Insert apartment links
                         section.insertAdjacentHTML('beforeend', apartmentsHtml);
                     }
                 });
@@ -81,7 +79,7 @@ function getMenuItems(role) {
             { icon: 'fa-th-large', text: 'Dashboard', href: '/dashboard' },
         ]},
         { section: 'PROPERTIES', items: [
-            { icon: 'fa-building', text: 'My Apartments', href: '/apartments' }, // fallback, will be replaced
+            { icon: 'fa-building', text: 'My Apartments', href: '/apartments' },
         ]},
         { section: 'PEOPLE', items: [
             { icon: 'fa-users', text: 'Tenants', href: '/tenants' },
@@ -107,9 +105,21 @@ function getMenuItems(role) {
         ]},
     ];
 
+    const staffMenu = [
+        { section: 'MAIN', items: [
+            { icon: 'fa-th-large', text: 'Dashboard', href: '/dashboard' },
+        ]},
+        { section: 'MY WORK', items: [
+            { icon: 'fa-history', text: 'My Salary', href: '/dashboard' },
+            { icon: 'fa-tasks', text: 'My Tasks', href: '/dashboard' },
+            { icon: 'fa-bullhorn', text: 'Announcements', href: '/dashboard' },
+        ]},
+    ];
+
     if (role === 'landlord') return landlordMenu;
     if (role === 'caretaker') return caretakerMenu;
     if (role === 'tenant') return tenantMenu;
+    if (role === 'staff') return staffMenu;
     return [];
 }
 
