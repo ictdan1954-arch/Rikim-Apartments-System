@@ -129,6 +129,45 @@ const staffController = {
         }
     },
 
+    // NEW: Get members with account status for a specific apartment
+    async getMembersWithAccounts(req, res) {
+        try {
+            const { apartmentId } = req.params;
+
+            // Fetch staff members for the apartment
+            const { data: members, error } = await supabase
+                .from('staff_members')
+                .select('*, staff_roles:staff_role_id(id, role_name)')
+                .eq('apartment_id', apartmentId);
+
+            if (error) throw error;
+
+            // For each member, find the corresponding user (if any)
+            const phones = members.map(m => m.phone);
+            const { data: users, userError } = await supabase
+                .from('users')
+                .select('id, phone, username, role')
+                .in('phone', phones)
+                .in('role', ['staff', 'caretaker']);
+
+            if (userError) throw userError;
+
+            // Attach account info to each member
+            const result = members.map(member => {
+                const user = users.find(u => u.phone === member.phone);
+                return {
+                    ...member,
+                    user: user || null,
+                    has_account: !!user
+                };
+            });
+
+            return ApiResponse.success(res, result);
+        } catch (error) {
+            return ApiResponse.error(res, 'Failed to fetch members with accounts');
+        }
+    },
+
     async getMemberById(req, res) {
         try {
             const { id } = req.params;
