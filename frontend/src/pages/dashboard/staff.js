@@ -1,6 +1,11 @@
+import { apiService } from '../../services/api.service.js';
 import { formatCurrency, formatDate, capitalize } from '../../utils/formatters.js';
+import { showToast } from '../../components/toast.js';
 
-export function renderStaffDashboard(container, data) {
+// Roles that are considered "technical" – they see full task management
+const TECHNICAL_ROLES = ['plumber', 'electrician', 'maintenance technician'];
+
+export async function renderStaffDashboard(container, data) {
     const staff = data.staff;
     const salaries = data.salaries || [];
     const tasks = data.tasks || [];
@@ -14,6 +19,25 @@ export function renderStaffDashboard(container, data) {
                 <p>Your account is not linked to an active staff member.</p>
             </div>`;
         return;
+    }
+
+    const roleName = (staff.staff_roles?.role_name || '').toLowerCase();
+    const isTechnical = TECHNICAL_ROLES.includes(roleName);
+
+    // Helper to render task action buttons for technical staff
+    function renderTaskActions(task) {
+        if (!isTechnical) return '';
+
+        let buttons = '';
+        if (task.status === 'reported') {
+            buttons += `<button class="btn btn-sm btn-outline start-task-btn" data-id="${task.id}" title="Start Working"><i class="fas fa-play"></i> Start</button>`;
+        }
+        if (task.status === 'in_progress') {
+            buttons += `<button class="btn btn-sm btn-outline resolve-task-btn" data-id="${task.id}" title="Mark Resolved"><i class="fas fa-check"></i> Resolve</button>`;
+        }
+        // Always allow comment
+        buttons += `<button class="btn btn-sm btn-outline comment-task-btn" data-id="${task.id}" title="Add Comment"><i class="fas fa-comment"></i></button>`;
+        return buttons;
     }
 
     container.innerHTML = `
@@ -52,7 +76,7 @@ export function renderStaffDashboard(container, data) {
             </div>
         </div>
 
-        <!-- Salary History -->
+        <!-- Salary History (shown to all staff) -->
         <div class="card mb-2">
             <div class="card-header">
                 <h3 class="card-title">Recent Salary Payments</h3>
@@ -76,7 +100,8 @@ export function renderStaffDashboard(container, data) {
             </div>
         </div>
 
-        <!-- Assigned Tasks -->
+        <!-- Tasks Section – detailed for technical roles, simple for others -->
+        ${isTechnical ? `
         <div class="card mb-2">
             <div class="card-header">
                 <h3 class="card-title">My Assigned Tasks</h3>
@@ -85,7 +110,7 @@ export function renderStaffDashboard(container, data) {
                 ${tasks.length > 0 ? `
                 <table class="table">
                     <thead>
-                        <tr><th>Title</th><th>Unit</th><th>Priority</th><th>Status</th><th>Reported</th></tr>
+                        <tr><th>Title</th><th>Unit</th><th>Priority</th><th>Status</th><th>Reported</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
                         ${tasks.map(t => `
@@ -95,13 +120,32 @@ export function renderStaffDashboard(container, data) {
                                 <td><span class="badge badge-${t.priority === 'high' || t.priority === 'urgent' ? 'danger' : 'warning'}">${t.priority}</span></td>
                                 <td><span class="badge badge-${t.status === 'in_progress' ? 'info' : 'warning'}">${t.status}</span></td>
                                 <td>${formatDate(t.date_reported)}</td>
+                                <td>
+                                    <div class="table-actions">
+                                        ${renderTaskActions(t)}
+                                    </div>
+                                </td>
                             </tr>`).join('')}
                     </tbody>
                 </table>` : '<p class="text-muted p-2">No tasks assigned.</p>'}
             </div>
-        </div>
+        </div>` : `
+        <div class="card mb-2">
+            <div class="card-header">
+                <h3 class="card-title">Assigned Tasks</h3>
+            </div>
+            ${tasks.length > 0 ? tasks.map(t => `
+                <div class="info-card mb-1">
+                    <div class="info-card-icon"><i class="fas fa-tools"></i></div>
+                    <div class="info-card-content">
+                        <h4>${t.title}</h4>
+                        <p>${t.units?.unit_number || 'N/A'} – ${capitalize(t.status)}</p>
+                    </div>
+                </div>
+            `).join('') : '<p class="text-muted p-2">No tasks assigned.</p>'}
+        </div>`}
 
-        <!-- Announcements -->
+        <!-- Announcements (shown to all) -->
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Announcements</h3>
@@ -121,4 +165,52 @@ export function renderStaffDashboard(container, data) {
             }
         </div>
     `;
+
+    // Attach event listeners for task actions (only if technical)
+    if (isTechnical) {
+        container.addEventListener('click', async (e) => {
+            const startBtn = e.target.closest('.start-task-btn');
+            if (startBtn) {
+                const taskId = startBtn.dataset.id;
+                try {
+                    await apiService.put(`/maintenance/${taskId}`, { status: 'in_progress' });
+                    showToast('Task started', 'success');
+                    location.reload();
+                } catch (err) { showToast(err.message, 'error'); }
+                return;
+            }
+
+            const resolveBtn = e.target.closest('.resolve-task-btn');
+            if (resolveBtn) {
+                const taskId = resolveBtn.dataset.id;
+                try {
+                    await apiService.put(`/maintenance/${taskId}`, { status: 'resolved' });
+                    showToast('Task resolved', 'success');
+                    location.reload();
+                } catch (err) { showToast(err.message, 'error'); }
+                return;
+            }
+
+            const commentBtn = e.target.closest('.comment-task-btn');
+            if (commentBtn) {
+                const taskId = commentBtn.dataset.id;
+                const { showFormModal } = await import('../../components/modal.js');
+                const formHtml = `
+                    <div class="form-group">
+                        <label class="form-label">Comment</label>
+                        <textarea class="form-textarea" id="task-comment" rows="2"></textarea>
+                    </div>`;
+                showFormModal('Add Comment', formHtml, async (overlay) => {
+                    const comment = overlay.querySelector('#task-comment').value.trim();
+                    if (!comment) { showToast('Comment required', 'error'); return false; }
+                    try {
+                        await apiService.post(`/maintenance/${taskId}/comments`, { comment });
+                        showToast('Comment added', 'success');
+                        location.reload();
+                    } catch (err) { showToast(err.message, 'error'); return false; }
+                });
+                return;
+            }
+        });
+    }
 }
