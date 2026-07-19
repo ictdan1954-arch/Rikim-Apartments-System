@@ -1,63 +1,66 @@
 /* =============================================
-   BANDAPTAI APARTMENTS - MAIN STYLES
+   BANDAPTAI APARTMENTS - ESTATE CALM THEME
+   Warm · Sophisticated · Boutique Property Management
    ============================================= */
 
 :root {
-    /* Primary Colors */
-    --primary: #2563EB;
-    --primary-light: #3B82F6;
-    --primary-dark: #1D4ED8;
-    --primary-bg: #EFF6FF;
-    
-    /* Secondary Colors */
-    --secondary: #10B981;
-    --secondary-light: #34D399;
-    --secondary-dark: #059669;
-    --secondary-bg: #ECFDF5;
-    
-    /* Danger/Warning */
-    --danger: #EF4444;
-    --danger-light: #F87171;
-    --danger-bg: #FEF2F2;
-    --warning: #F59E0B;
-    --warning-light: #FBBF24;
-    --warning-bg: #FFFBEB;
-    --info: #6366F1;
-    --info-bg: #EEF2FF;
-    
-    /* Neutrals */
-    --bg-main: #F8FAFC;
-    --bg-card: #FFFFFF;
-    --bg-input: #F1F5F9;
-    --text-primary: #1E293B;
-    --text-secondary: #64748B;
-    --text-muted: #94A3B8;
-    --border: #E2E8F0;
-    --border-light: #F1F5F9;
-    
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-    
-    /* Radius */
+    /* ===== Primary Palette (Terracotta & Rust) ===== */
+    --primary: #D4845A;          /* Refined terracotta - Buttons & highlights */
+    --primary-light: #E2A886;    /* Soft terracotta - Hover accents */
+    --primary-dark: #B13E2A;     /* Deep rust - Heavy CTAs & danger */
+    --primary-bg: #F6EAE0;       /* Warm peach - Badge & alert backgrounds */
+
+    /* ===== Secondary / Success (Sage Green - DMC Mapped) ===== */
+    --secondary: #5C7A6A;        /* Muted sage - Available units, success */
+    --secondary-light: #7E9A89;  /* Lighter sage - Hover states */
+    --secondary-dark: #446053;   /* Deep forest - Strong success */
+    --secondary-bg: #EFF3EF;     /* Soft mint - Badge background */
+
+    /* ===== Danger (Mapped to Deep Rust for consistency) ===== */
+    --danger: #B13E2A;           
+    --danger-light: #D1624E;     
+    --danger-bg: #F6E5E1;        
+
+    /* ===== Warning (Warm Gold - DMC Mapped) ===== */
+    --warning: #D4A373;          
+    --warning-light: #E2BC96;    
+    --warning-bg: #F8F2EB;       
+
+    /* ===== Info (Soft Lavender - DMC Mapped) ===== */
+    --info: #C5B4D6;             
+    --info-bg: #F4F0F8;          
+
+    /* ===== Neutrals (Warm & Earthy) ===== */
+    --bg-main: #F7F6F2;          /* Warm linen - Main background */
+    --bg-card: #FFFFFF;          /* Clean white - Cards & modals */
+    --bg-input: #F0EDE8;         /* Warm light grey - Inputs */
+    --text-primary: #2D2A28;     /* Soft charcoal - Main text */
+    --text-secondary: #5A5652;   /* Warm grey - Subtext */
+    --text-muted: #8A8580;       /* Muted warm grey - Placeholders */
+    --border: #E3DFD8;           /* Warm beige - Borders */
+    --border-light: #EFECE6;     /* Lighter borders */
+
+    /* ===== Shadows (Warm-toned, soft) ===== */
+    --shadow-sm: 0 1px 3px rgba(45, 42, 40, 0.04);
+    --shadow-md: 0 4px 12px rgba(45, 42, 40, 0.06);
+    --shadow-lg: 0 10px 20px rgba(45, 42, 40, 0.08);
+    --shadow-xl: 0 20px 28px rgba(45, 42, 40, 0.10);
+
+    /* ===== Radius ===== */
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 16px;
     --radius-xl: 24px;
     --radius-full: 9999px;
-    
-    /* Transitions */
-    --transition-fast: 150ms ease;
-    --transition-normal: 250ms ease;
-    --transition-slow: 350ms ease;
-    
-    /* Sidebar */
+
+    /* ===== Transitions (Buttery smooth) ===== */
+    --transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* ===== Layout ===== */
     --sidebar-width: 260px;
     --sidebar-collapsed: 70px;
-    
-    /* Top Navbar */
     --navbar-height: 64px;
 }
 
@@ -76,7 +79,7 @@ html {
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--bg-main);
     color: var(--text-primary);
     line-height: 1.6;
@@ -90,7 +93,6 @@ a {
     color: var(--primary);
     transition: color var(--transition-fast);
 }
-
 a:hover {
     color: var(--primary-dark);
 }
@@ -98,19 +100,16 @@ a:hover {
 ul {
     list-style: none;
 }
-
 img {
     max-width: 100%;
     height: auto;
 }
-
 button {
     cursor: pointer;
     border: none;
     outline: none;
     font-family: inherit;
 }
-
 input, select, textarea {
     font-family: inherit;
     font-size: inherit;
@@ -137,19 +136,20 @@ input, select, textarea {
     margin-left: var(--sidebar-collapsed);
 }
 
+/* ----- Top Navbar (Glassmorphism warm touch) ----- */
 .top-navbar {
     height: var(--navbar-height);
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-light);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 24px;
+    padding: 0 28px;
     position: sticky;
     top: 0;
     z-index: 50;
-    backdrop-filter: blur(10px);
-    background: rgba(255, 255, 255, 0.95);
 }
 
 .navbar-left {
@@ -157,7 +157,6 @@ input, select, textarea {
     align-items: center;
     gap: 16px;
 }
-
 .navbar-right {
     display: flex;
     align-items: center;
@@ -168,11 +167,12 @@ input, select, textarea {
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-primary);
+    letter-spacing: -0.01em;
 }
 
 .page-content {
     flex: 1;
-    padding: 24px;
+    padding: 28px;
     overflow-y: auto;
 }
 
@@ -186,21 +186,21 @@ input, select, textarea {
     color: var(--text-primary);
     padding: 8px;
     border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
 }
-
 .mobile-menu-btn:hover {
     background: var(--bg-input);
 }
 
 /* =============================================
-   BUTTONS
+   BUTTONS (Warm & Inviting)
    ============================================= */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 10px 20px;
+    padding: 10px 22px;
     border-radius: var(--radius-md);
     font-size: 0.875rem;
     font-weight: 600;
@@ -212,19 +212,18 @@ input, select, textarea {
 .btn-primary {
     background: var(--primary);
     color: white;
+    box-shadow: 0 2px 8px rgba(212, 132, 90, 0.25);
 }
-
 .btn-primary:hover {
     background: var(--primary-dark);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }
 
 .btn-secondary {
     background: var(--bg-input);
     color: var(--text-primary);
 }
-
 .btn-secondary:hover {
     background: var(--border);
 }
@@ -233,18 +232,18 @@ input, select, textarea {
     background: var(--secondary);
     color: white;
 }
-
 .btn-success:hover {
     background: var(--secondary-dark);
+    transform: translateY(-1px);
 }
 
 .btn-danger {
     background: var(--danger);
     color: white;
 }
-
 .btn-danger:hover {
-    background: #DC2626;
+    background: #9A3322; /* Slightly darker rust */
+    transform: translateY(-1px);
 }
 
 .btn-outline {
@@ -252,22 +251,20 @@ input, select, textarea {
     border: 2px solid var(--border);
     color: var(--text-primary);
 }
-
 .btn-outline:hover {
     border-color: var(--primary);
     color: var(--primary);
+    background: var(--primary-bg);
 }
 
 .btn-sm {
     padding: 6px 14px;
     font-size: 0.8rem;
 }
-
 .btn-lg {
     padding: 14px 28px;
     font-size: 1rem;
 }
-
 .btn-icon {
     width: 40px;
     height: 40px;
@@ -278,46 +275,29 @@ input, select, textarea {
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    transform: none;
+    transform: none !important;
+    box-shadow: none !important;
 }
 
 /* =============================================
-   BADGES
+   BADGES (Using DMC-inspired statuses)
    ============================================= */
 .badge {
     display: inline-flex;
     align-items: center;
-    padding: 4px 12px;
+    padding: 4px 14px;
     border-radius: var(--radius-full);
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: capitalize;
+    letter-spacing: 0.01em;
 }
 
-.badge-primary {
-    background: var(--primary-bg);
-    color: var(--primary);
-}
-
-.badge-success {
-    background: var(--secondary-bg);
-    color: var(--secondary-dark);
-}
-
-.badge-danger {
-    background: var(--danger-bg);
-    color: var(--danger);
-}
-
-.badge-warning {
-    background: var(--warning-bg);
-    color: var(--warning);
-}
-
-.badge-info {
-    background: var(--info-bg);
-    color: var(--info);
-}
+.badge-primary { background: var(--primary-bg); color: var(--primary-dark); }
+.badge-success { background: var(--secondary-bg); color: var(--secondary-dark); }
+.badge-danger { background: var(--danger-bg); color: var(--danger); }
+.badge-warning { background: var(--warning-bg); color: #A87D52; } /* Darker gold */
+.badge-info { background: var(--info-bg); color: #9A84B0; } /* Darker lavender */
 
 /* =============================================
    UTILITY CLASSES
@@ -355,12 +335,12 @@ input, select, textarea {
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
 
 /* =============================================
-   LOADING SKELETON
+   LOADING SKELETON (Refined to match theme)
    ============================================= */
 .skeleton {
     background: linear-gradient(90deg, var(--bg-input) 25%, var(--border) 50%, var(--bg-input) 75%);
     background-size: 200% 100%;
-    animation: skeleton-loading 1.5s infinite;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
     border-radius: var(--radius-sm);
 }
 
@@ -373,13 +353,11 @@ input, select, textarea {
     height: 16px;
     margin-bottom: 8px;
 }
-
 .skeleton-title {
     height: 24px;
     width: 60%;
     margin-bottom: 16px;
 }
-
 .skeleton-card {
     height: 120px;
     border-radius: var(--radius-md);
@@ -399,7 +377,7 @@ input, select, textarea {
     }
     
     .main-content {
-        margin-left: 0;
+        margin-left: 0 !important;
     }
     
     .sidebar {
@@ -407,14 +385,11 @@ input, select, textarea {
         position: fixed;
         z-index: 100;
         height: 100vh;
+        transition: transform var(--transition-normal);
     }
     
     .sidebar.open {
         transform: translateX(0);
-    }
-    
-    .sidebar.collapsed + .main-content {
-        margin-left: 0;
     }
     
     .page-content {
@@ -438,5 +413,8 @@ input, select, textarea {
     .btn {
         padding: 8px 16px;
         font-size: 0.8rem;
+    }
+    .navbar-right .btn span {
+        display: none; /* Hide text on tiny screens, keep icons */
     }
 }
