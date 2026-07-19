@@ -1,91 +1,146 @@
 /* =============================================
-   FORMS
+   FORMS - ESTATE CALM
+   Warm, accessible, and a pleasure to fill out.
    ============================================= */
+
+/* ----- Form Group (Spacing wrapper) ----- */
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
+/* ----- Labels (Clear & friendly) ----- */
 .form-label {
     display: block;
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-primary);
     margin-bottom: 6px;
+    letter-spacing: -0.01em;
 }
 
 .form-label .required {
     color: var(--danger);
-    margin-left: 2px;
+    margin-left: 3px;
+    font-weight: 700;
 }
 
+/* ----- Base Inputs (Text, Select, Textarea) ----- */
 .form-input,
 .form-select,
 .form-textarea {
     width: 100%;
-    padding: 12px 16px;
+    padding: 12px 18px;
     border: 2px solid var(--border);
     border-radius: var(--radius-md);
     background: var(--bg-card);
     color: var(--text-primary);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     transition: all var(--transition-fast);
     outline: none;
+    box-shadow: inset 0 1px 3px rgba(45, 42, 40, 0.02);
 }
 
+/* ----- Focus State (Signature Terracotta Glow) ----- */
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px var(--primary-bg);
+    box-shadow: 0 0 0 4px rgba(212, 132, 90, 0.12), inset 0 1px 3px rgba(45, 42, 40, 0.02);
+    background: var(--bg-card);
 }
 
+/* ----- Error State (Warm Rust) ----- */
 .form-input.error,
 .form-select.error,
 .form-textarea.error {
     border-color: var(--danger);
-    box-shadow: 0 0 0 3px var(--danger-bg);
+    box-shadow: 0 0 0 4px rgba(177, 62, 42, 0.10), inset 0 1px 3px rgba(45, 42, 40, 0.02);
 }
 
-.form-input::placeholder {
+.form-input.error:focus,
+.form-select.error:focus,
+.form-textarea.error:focus {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 4px rgba(177, 62, 42, 0.18), inset 0 1px 3px rgba(45, 42, 40, 0.02);
+}
+
+/* ----- Placeholder Styling ----- */
+.form-input::placeholder,
+.form-textarea::placeholder {
     color: var(--text-muted);
+    opacity: 0.8;
+    font-weight: 400;
 }
 
+/* ----- Textarea (Resizable & taller) ----- */
 .form-textarea {
     resize: vertical;
-    min-height: 100px;
+    min-height: 110px;
+    line-height: 1.6;
 }
 
+/* ----- Select Dropdown (Custom Arrow) ----- */
 .form-select {
     cursor: pointer;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2364748B' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%238A8580' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
-    padding-right: 36px;
+    background-position: right 14px center;
+    padding-right: 44px;
+    background-size: 14px;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+.form-select:hover {
+    border-color: var(--text-muted);
+}
+
+.form-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(212, 132, 90, 0.12);
+}
+
+/* For Firefox (removes default arrow) */
+.form-select::-ms-expand {
+    display: none;
+}
+
+/* ----- Validation Feedback (Error & Hint) ----- */
 .form-error {
     font-size: 0.8rem;
     color: var(--danger);
-    margin-top: 4px;
+    margin-top: 6px;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    font-weight: 500;
+}
+
+.form-error i {
+    font-size: 0.9rem;
 }
 
 .form-hint {
     font-size: 0.8rem;
     color: var(--text-muted);
-    margin-top: 4px;
+    margin-top: 6px;
+    font-weight: 400;
 }
 
-/* Checkbox & Radio */
+/* ----- Checkbox & Radio (Native, styled with accent) ----- */
 .form-check {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     cursor: pointer;
-    padding: 8px 0;
+    padding: 6px 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    transition: color var(--transition-fast);
+}
+
+.form-check:hover {
+    color: var(--text-primary);
 }
 
 .form-check input[type="checkbox"],
@@ -94,47 +149,136 @@
     height: 18px;
     accent-color: var(--primary);
     cursor: pointer;
+    flex-shrink: 0;
+    margin: 0;
+    border-radius: var(--radius-sm);
+    transition: transform var(--transition-fast);
 }
 
-/* Inline Form */
+.form-check input[type="checkbox"]:hover,
+.form-check input[type="radio"]:hover {
+    transform: scale(1.05);
+}
+
+/* ----- Inline Form (Horizontal groups) ----- */
 .form-inline {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     align-items: flex-end;
+    flex-wrap: wrap;
 }
 
 .form-inline .form-group {
     flex: 1;
+    min-width: 180px;
+    margin-bottom: 0;
 }
 
-/* Search Bar */
+/* ----- Search Bar (With icon) ----- */
 .search-bar {
     position: relative;
+    width: 100%;
+    max-width: 380px;
 }
 
 .search-bar .form-input {
-    padding-left: 42px;
+    padding-left: 44px;
+    border-radius: var(--radius-full); /* Pill-shaped for a modern search feel */
+    background: var(--bg-card);
+    border-color: var(--border-light);
+}
+
+.search-bar .form-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(212, 132, 90, 0.10);
 }
 
 .search-bar i {
     position: absolute;
-    left: 14px;
+    left: 16px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-muted);
-    font-size: 1rem;
+    font-size: 1.1rem;
+    pointer-events: none;
+    transition: color var(--transition-fast);
 }
 
-/* Filter Bar */
+.search-bar .form-input:focus + i,
+.search-bar .form-input:focus ~ i {
+    color: var(--primary);
+}
+
+/* ----- Filter Bar (Horizontal filters) ----- */
 .filter-bar {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     flex-wrap: wrap;
     align-items: center;
-    padding: 16px 0;
+    padding: 16px 0 20px 0;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 20px;
 }
 
 .filter-bar .form-group {
     margin-bottom: 0;
-    min-width: 180px;
+    min-width: 170px;
+    flex: 0 1 auto;
+}
+
+.filter-bar .form-input,
+.filter-bar .form-select {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    background: var(--bg-input);
+    border-width: 1px;
+}
+
+.filter-bar .form-input:focus,
+.filter-bar .form-select:focus {
+    background: var(--bg-card);
+}
+
+/* ----- Responsive Tweaks ----- */
+@media (max-width: 768px) {
+    .form-inline {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    .form-inline .form-group {
+        min-width: unset;
+        margin-bottom: 0;
+    }
+    .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 12px 0 16px 0;
+    }
+    .filter-bar .form-group {
+        min-width: unset;
+        width: 100%;
+    }
+    .search-bar {
+        max-width: 100%;
+    }
+    .form-input,
+    .form-select,
+    .form-textarea {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .form-group {
+        margin-bottom: 18px;
+    }
+    .form-label {
+        font-size: 0.8rem;
+    }
+    .form-check {
+        font-size: 0.85rem;
+    }
 }
