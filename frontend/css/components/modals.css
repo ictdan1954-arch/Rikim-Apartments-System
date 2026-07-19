@@ -1,22 +1,27 @@
 /* =============================================
-   MODALS
+   MODALS - ESTATE CALM
+   Smooth, secure, and elegantly focused.
    ============================================= */
+
+/* ----- Overlay (Backdrop) ----- */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+    background: rgba(45, 42, 40, 0.60); /* Warm charcoal tint instead of harsh black */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
     padding: 20px;
-    animation: fadeIn 0.2s ease;
+    animation: fadeIn 0.25s ease-out;
 }
 
+/* ----- Modal Container (The Sheet) ----- */
 .modal {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
@@ -25,80 +30,119 @@
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: var(--shadow-xl);
-    animation: slideUp 0.3s ease;
+    border: 1px solid var(--border-light);
+    animation: slideUp 0.35s cubic-bezier(0.21, 0.98, 0.35, 1.0);
+    display: flex;
+    flex-direction: column;
 }
 
+/* --- Modal Size Variants --- */
 .modal-lg {
     max-width: 800px;
 }
-
 .modal-sm {
     max-width: 400px;
 }
 
+/* ----- Modal Header (Sticky title bar) ----- */
 .modal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--border);
+    padding: 20px 28px;
+    border-bottom: 1px solid var(--border-light);
     position: sticky;
     top: 0;
     background: var(--bg-card);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     z-index: 10;
+    flex-shrink: 0;
 }
 
 .modal-header h2 {
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     font-weight: 700;
     color: var(--text-primary);
+    letter-spacing: -0.02em;
+    margin: 0;
 }
 
+/* ----- Close Button (Refined & Tactile) ----- */
 .modal-close {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: var(--radius-full);
     background: var(--bg-input);
     color: var(--text-secondary);
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all var(--transition-fast);
+    border: 1px solid transparent;
+    cursor: pointer;
+    flex-shrink: 0;
 }
 
 .modal-close:hover {
     background: var(--danger-bg);
     color: var(--danger);
+    border-color: var(--danger-light);
+    transform: scale(1.08);
 }
 
+.modal-close:active {
+    transform: scale(0.94);
+}
+
+/* ----- Modal Body (Scrollable Content) ----- */
 .modal-body {
-    padding: 24px;
+    padding: 28px;
+    flex: 1;
+    overflow-y: auto;
 }
 
+/* Custom scroll for modal body to match theme */
+.modal-body::-webkit-scrollbar {
+    width: 5px;
+}
+.modal-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+.modal-body::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+}
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* ----- Modal Footer (Action Buttons) ----- */
 .modal-footer {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 12px;
-    padding: 16px 24px;
-    border-top: 1px solid var(--border);
+    padding: 16px 28px;
+    border-top: 1px solid var(--border-light);
     position: sticky;
     bottom: 0;
     background: var(--bg-card);
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    flex-shrink: 0;
+    flex-wrap: wrap;
 }
 
-/* Image Upload */
+/* ----- Image Upload Area (Drag & Drop style) ----- */
 .image-upload-area {
     border: 2px dashed var(--border);
     border-radius: var(--radius-md);
-    padding: 32px;
+    padding: 36px 24px;
     text-align: center;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all var(--transition-normal);
     background: var(--bg-input);
+    position: relative;
 }
 
 .image-upload-area:hover {
@@ -107,28 +151,117 @@
 }
 
 .image-upload-area i {
-    font-size: 2.5rem;
+    font-size: 2.8rem;
     color: var(--text-muted);
     margin-bottom: 12px;
+    transition: color var(--transition-fast);
+    display: block;
 }
 
+.image-upload-area:hover i {
+    color: var(--primary);
+}
+
+.image-upload-area p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.image-upload-area .upload-hint {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+
+/* When an image is uploaded (has-image state) */
 .image-upload-area.has-image {
     padding: 8px;
     border-style: solid;
     border-color: var(--secondary);
+    background: var(--secondary-bg);
+}
+
+.image-upload-area.has-image:hover {
+    border-color: var(--secondary-dark);
 }
 
 .image-upload-area img {
     max-height: 200px;
+    max-width: 100%;
     border-radius: var(--radius-sm);
+    display: block;
+    margin: 0 auto;
 }
 
+/* ----- Animations (Smooth & Organic) ----- */
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes slideUp {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from {
+        transform: translateY(24px) scale(0.98);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* ----- Responsive Tweaks for smaller screens ----- */
+@media (max-width: 768px) {
+    .modal {
+        max-width: 100%;
+        max-height: 95vh;
+        margin: 10px;
+        border-radius: var(--radius-md);
+    }
+    .modal-header {
+        padding: 16px 20px;
+    }
+    .modal-header h2 {
+        font-size: 1.05rem;
+    }
+    .modal-body {
+        padding: 20px;
+    }
+    .modal-footer {
+        padding: 14px 20px;
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+    .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    .modal-close {
+        width: 34px;
+        height: 34px;
+        font-size: 1rem;
+    }
+    .image-upload-area {
+        padding: 24px 16px;
+    }
+    .image-upload-area i {
+        font-size: 2.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-overlay {
+        padding: 8px;
+    }
+    .modal-body {
+        padding: 16px;
+    }
+    .image-upload-area {
+        padding: 18px 12px;
+    }
 }
