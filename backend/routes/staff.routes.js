@@ -26,4 +26,7 @@ router.post('/salaries', authorize('landlord', 'caretaker'), staffController.rec
 router.get('/salaries/apartment/:apartmentId', authorize('landlord', 'caretaker'), staffController.getSalaries);
 router.delete('/salaries/:id', authorize('landlord'), staffController.deleteSalary);
 
+// Staff members with account status
+router.get('/members/apartment/:apartmentId/accounts', authorize('landlord', 'caretaker'), staffController.getMembersWithAccounts);
+
 module.exports = router;
