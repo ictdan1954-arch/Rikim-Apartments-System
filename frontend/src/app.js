@@ -20,11 +20,11 @@ router.addRoute('/setup', {
     component: () => import('./pages/setup.js')
 });
 
-// Dashboard
+// Dashboard – now includes staff
 router.addRoute('/dashboard', {
     title: 'Dashboard',
     auth: true,
-    role: ['landlord', 'caretaker', 'tenant'],
+    role: ['landlord', 'caretaker', 'tenant', 'staff'],
     component: () => import('./pages/dashboard/dashboard.js')
 });
 
