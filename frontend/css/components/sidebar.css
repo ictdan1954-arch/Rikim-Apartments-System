@@ -1,21 +1,24 @@
 /* =============================================
-   SIDEBAR
+   SIDEBAR - ESTATE CALM
+   Warm, grounded, and highly intuitive.
    ============================================= */
+
 .sidebar {
     width: var(--sidebar-width);
     height: 100vh;
     position: fixed;
     left: 0;
     top: 0;
-    background: var(--bg-card);
-    border-right: 1px solid var(--border);
+    background: #2D2A28; /* Deep warm charcoal - anchors the UI */
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     flex-direction: column;
     z-index: 100;
     transition: width var(--transition-normal), transform var(--transition-normal);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 4px 0 20px rgba(45, 42, 40, 0.08);
 }
 
+/* --- Collapsed State --- */
 .sidebar.collapsed {
     width: var(--sidebar-collapsed);
 }
@@ -23,21 +26,27 @@
 .sidebar.collapsed .logo-text,
 .sidebar.collapsed .nav-text,
 .sidebar.collapsed .user-details,
-.sidebar.collapsed .badge {
+.sidebar.collapsed .badge,
+.sidebar.collapsed .nav-section-title {
     display: none;
 }
 
 .sidebar.collapsed .nav-link {
     justify-content: center;
-    padding: 12px;
+    padding: 14px;
 }
 
+.sidebar.collapsed .sidebar-logo {
+    justify-content: center;
+}
+
+/* --- Header / Logo --- */
 .sidebar-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 20px;
-    border-bottom: 1px solid var(--border);
+    padding: 20px 20px 16px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     min-height: var(--navbar-height);
 }
 
@@ -47,120 +56,170 @@
     gap: 12px;
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--primary);
+    color: #F7F6F2; /* Warm white for contrast */
     white-space: nowrap;
     overflow: hidden;
+    letter-spacing: -0.02em;
 }
 
 .sidebar-logo i {
     font-size: 1.5rem;
+    color: var(--primary); /* Terracotta accent on the icon */
 }
 
+.sidebar-logo span {
+    color: var(--primary); /* Highlight "Bandaptai" or key part */
+}
+
+/* --- Toggle Button (Collapse/Expand) --- */
 .sidebar-toggle {
-    background: none;
-    color: var(--text-secondary);
-    font-size: 1.25rem;
-    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #A09B96;
+    font-size: 1.2rem;
+    padding: 6px 10px;
     border-radius: var(--radius-sm);
-    transition: color var(--transition-fast);
+    transition: all var(--transition-fast);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
 }
 
 .sidebar-toggle:hover {
-    color: var(--text-primary);
-    background: var(--bg-input);
+    color: #FFFFFF;
+    background: rgba(212, 132, 90, 0.15);
+    border-color: var(--primary);
 }
 
-/* Sidebar Navigation */
+/* --- Navigation Area --- */
 .sidebar-nav {
     flex: 1;
     overflow-y: auto;
-    padding: 12px 0;
+    padding: 16px 0 8px 0;
 }
 
+/* Scrollbar for the nav (matches dark theme) */
+.sidebar-nav::-webkit-scrollbar {
+    width: 4px;
+}
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+}
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 132, 90, 0.4);
+}
+
+/* --- Navigation Sections --- */
 .nav-section {
-    padding: 8px 16px;
-    margin-top: 16px;
+    padding: 8px 12px;
+    margin-top: 8px;
 }
 
 .nav-section-title {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--text-muted);
+    letter-spacing: 0.12em;
+    color: #8A8580; /* Muted warm grey */
     font-weight: 700;
-    padding: 0 8px;
-    margin-bottom: 8px;
+    padding: 0 12px;
+    margin-bottom: 6px;
     white-space: nowrap;
     overflow: hidden;
 }
 
+/* --- Individual Nav Links --- */
 .nav-link {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     padding: 12px 16px;
-    margin: 2px 8px;
+    margin: 2px 12px;
     border-radius: var(--radius-md);
-    color: var(--text-secondary);
+    color: #A09B96; /* Light warm grey */
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     transition: all var(--transition-fast);
     white-space: nowrap;
     cursor: pointer;
     text-decoration: none;
+    border-left: 3px solid transparent;
+    position: relative;
 }
 
 .nav-link i {
-    width: 20px;
+    width: 22px;
     font-size: 1.1rem;
     text-align: center;
     flex-shrink: 0;
+    color: #8A8580;
+    transition: color var(--transition-fast);
 }
 
+/* --- Hover State --- */
 .nav-link:hover {
-    background: var(--bg-input);
-    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.06);
+    color: #F7F6F2;
+}
+.nav-link:hover i {
+    color: var(--primary-light);
 }
 
+/* --- Active State (The "Glowing Terracotta" touch) --- */
 .nav-link.active {
-    background: var(--primary-bg);
-    color: var(--primary);
+    background: rgba(212, 132, 90, 0.12);
+    color: #F7F6F2;
+    border-left-color: var(--primary);
     font-weight: 600;
 }
-
 .nav-link.active i {
     color: var(--primary);
 }
 
+/* --- Badge inside nav (e.g., notification counts) --- */
 .nav-link .badge {
     margin-left: auto;
+    background: rgba(212, 132, 90, 0.2);
+    color: var(--primary-light);
+    font-size: 0.7rem;
+    padding: 1px 10px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(212, 132, 90, 0.1);
 }
 
-/* Sidebar Footer */
+/* --- Footer (User Profile & Logout) --- */
 .sidebar-footer {
-    padding: 16px;
-    border-top: 1px solid var(--border);
+    padding: 16px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    margin-top: auto;
 }
 
 .user-info {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     min-width: 0;
     flex: 1;
 }
 
 .user-avatar {
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: var(--radius-full);
     object-fit: cover;
-    background: var(--bg-input);
+    background: rgba(255, 255, 255, 0.08);
     flex-shrink: 0;
+    border: 2px solid rgba(212, 132, 90, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #A09B96;
+    font-weight: 600;
 }
 
 .user-details {
@@ -170,7 +229,7 @@
 .user-name {
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: #F7F6F2;
     display: block;
     white-space: nowrap;
     overflow: hidden;
@@ -178,36 +237,28 @@
 }
 
 .user-role {
-    font-size: 0.75rem;
-    color: var(--text-muted);
+    font-size: 0.7rem;
+    color: #8A8580;
     text-transform: capitalize;
+    letter-spacing: 0.02em;
 }
 
+/* --- Logout Button --- */
 .logout-btn {
-    background: none;
-    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.04);
+    color: #8A8580;
     font-size: 1.1rem;
-    padding: 8px;
+    padding: 8px 10px;
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);
     flex-shrink: 0;
+    border: 1px solid transparent;
+    cursor: pointer;
 }
 
 .logout-btn:hover {
-    background: var(--danger-bg);
-    color: var(--danger);
-}
-
-/* Scrollbar */
-.sidebar-nav::-webkit-scrollbar {
-    width: 4px;
-}
-
-.sidebar-nav::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.sidebar-nav::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 2px;
+    background: rgba(177, 62, 42, 0.15); /* Danger rust tint */
+    color: #D1624E; /* Danger light */
+    border-color: rgba(177, 62, 42, 0.2);
+    transform: scale(1.05);
 }
