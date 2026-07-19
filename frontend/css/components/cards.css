@@ -1,18 +1,25 @@
 /* =============================================
-   CARDS
+   CARDS - ESTATE CALM
+   Warm, elevated containers for all your data.
    ============================================= */
+
+/* ----- Base Card (Universal Container) ----- */
 .card {
     background: var(--bg-card);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-light);
     padding: 24px;
-    transition: all var(--transition-fast);
+    transition: all var(--transition-normal);
+    box-shadow: var(--shadow-sm);
 }
 
 .card:hover {
     box-shadow: var(--shadow-md);
+    border-color: var(--border);
+    transform: translateY(-2px);
 }
 
+/* ----- Card Header / Title Area ----- */
 .card-header {
     display: flex;
     align-items: center;
@@ -24,119 +31,209 @@
     font-size: 1rem;
     font-weight: 700;
     color: var(--text-primary);
+    letter-spacing: -0.01em;
 }
 
 .card-subtitle {
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin-top: 2px;
+    font-weight: 400;
 }
 
-/* Stat Cards */
+/* ----- Stat Cards (Dashboard Numbers) ----- */
 .stat-card {
     background: var(--bg-card);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+    border-left: 5px solid transparent; /* Accent stripe base */
     padding: 20px 24px;
     display: flex;
     align-items: center;
-    gap: 16px;
-    transition: all var(--transition-fast);
+    gap: 18px;
+    transition: all var(--transition-normal);
+    box-shadow: var(--shadow-sm);
 }
 
 .stat-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
+    border-color: var(--border);
 }
 
+/* --- Stat Icons (Coloured by status) --- */
 .stat-icon {
-    width: 48px;
-    height: 48px;
+    width: 52px;
+    height: 52px;
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     flex-shrink: 0;
+    transition: transform var(--transition-fast);
 }
 
+.stat-card:hover .stat-icon {
+    transform: scale(1.06);
+}
+
+/* Icon Variants (mapped to Estate Calm palette) */
 .stat-icon.primary {
     background: var(--primary-bg);
     color: var(--primary);
 }
+.stat-card:has(.stat-icon.primary) {
+    border-left-color: var(--primary);
+}
 
 .stat-icon.success {
     background: var(--secondary-bg);
-    color: var(--secondary);
+    color: var(--secondary-dark);
+}
+.stat-card:has(.stat-icon.success) {
+    border-left-color: var(--secondary);
 }
 
 .stat-icon.danger {
     background: var(--danger-bg);
     color: var(--danger);
 }
+.stat-card:has(.stat-icon.danger) {
+    border-left-color: var(--danger);
+}
 
 .stat-icon.warning {
     background: var(--warning-bg);
-    color: var(--warning);
+    color: #A87D52; /* Darker gold for contrast */
+}
+.stat-card:has(.stat-icon.warning) {
+    border-left-color: var(--warning);
 }
 
 .stat-icon.info {
     background: var(--info-bg);
-    color: var(--info);
+    color: #9A84B0; /* Darker lavender */
+}
+.stat-card:has(.stat-icon.info) {
+    border-left-color: var(--info);
 }
 
+/* --- Stat Text --- */
 .stat-info {
     flex: 1;
     min-width: 0;
 }
 
 .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 800;
     color: var(--text-primary);
     line-height: 1.2;
+    letter-spacing: -0.02em;
 }
 
 .stat-label {
     font-size: 0.85rem;
     color: var(--text-secondary);
     margin-top: 2px;
+    font-weight: 500;
 }
 
-/* Info Cards */
+/* ----- Info Cards (For tenant/unit quick-links) ----- */
 .info-card {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 16px;
-    background: var(--bg-input);
+    gap: 14px;
+    padding: 16px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all var(--transition-normal);
+    box-shadow: var(--shadow-sm);
 }
 
 .info-card:hover {
     background: var(--primary-bg);
-    transform: translateX(4px);
+    border-color: var(--primary-light);
+    transform: translateX(6px);
+    box-shadow: var(--shadow-md);
 }
 
 .info-card-icon {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     border-radius: var(--radius-md);
-    background: var(--bg-card);
+    background: var(--bg-input);
     display: flex;
     align-items: center;
     justify-content: center;
     color: var(--primary);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.info-card:hover .info-card-icon {
+    background: var(--primary);
+    color: #FFFFFF;
+}
+
+.info-card-content {
+    flex: 1;
+    min-width: 0;
 }
 
 .info-card-content h4 {
     font-size: 0.9rem;
     font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
 }
 
 .info-card-content p {
     font-size: 0.8rem;
     color: var(--text-secondary);
+    margin: 0;
+}
+
+/* ----- Small Utility Card Modifiers ----- */
+.card-flat {
+    box-shadow: none !important;
+    border-color: var(--border-light) !important;
+}
+
+.card-flat:hover {
+    transform: none !important;
+    border-color: var(--border) !important;
+}
+
+/* ----- Responsive tweaks for cards ----- */
+@media (max-width: 768px) {
+    .card {
+        padding: 18px;
+    }
+    .stat-card {
+        padding: 16px 18px;
+        gap: 14px;
+    }
+    .stat-value {
+        font-size: 1.4rem;
+    }
+    .stat-icon {
+        width: 44px;
+        height: 44px;
+        font-size: 1.1rem;
+    }
+    .info-card {
+        padding: 14px 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .stat-card {
+        flex-direction: row; /* Keep row, icons left */
+        align-items: center;
+    }
 }
