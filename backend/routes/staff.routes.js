@@ -31,6 +31,7 @@ router.post('/accounts', authorize('landlord', 'caretaker'), staffController.cre
 // Staff Salaries
 router.post('/salaries', authorize('landlord', 'caretaker'), staffController.recordSalary);
 router.get('/salaries/apartment/:apartmentId', authorize('landlord', 'caretaker'), staffController.getSalaries);
+router.put('/salaries/:id', authorize('landlord', 'caretaker'), staffController.updateSalary);   // <-- NEW
 router.delete('/salaries/:id', authorize('landlord'), staffController.deleteSalary);
 
 module.exports = router;
