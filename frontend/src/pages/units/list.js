@@ -1,6 +1,6 @@
 import { apiService } from '../../services/api.service.js';
 import { authService } from '../../services/auth.service.js';
-import { Modal, showFormModal } from '../../components/modal.js';
+import { showFormModal } from '../../components/modal.js';
 import { showToast } from '../../components/toast.js';
 import { formatCurrency, formatDate, capitalize } from '../../utils/formatters.js';
 import { CONFIG } from '../../config/constants.js';
@@ -37,6 +37,25 @@ async function renderPage(container, apartmentId, apartments = null) {
                     <button class="btn btn-primary" id="add-unit-btn"><i class="fas fa-plus"></i> Add Unit</button>
                 </div>
             </div>
+            <div class="filter-bar">
+                <div class="search-bar" style="flex:1;">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="form-input" id="unit-search" placeholder="Search unit number...">
+                </div>
+                <div class="form-group" style="min-width:150px;">
+                    <select class="form-select" id="type-filter">
+                        <option value="">All Types</option>
+                        ${CONFIG.UNIT_TYPES.map(t => `<option value="${t}">${capitalize(t)}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group" style="min-width:150px;">
+                    <select class="form-select" id="status-filter">
+                        <option value="">All Status</option>
+                        ${CONFIG.UNIT_STATUSES.map(s => `<option value="${s}">${capitalize(s)}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div id="units-summary" class="mt-2" style="display:none;"></div>
             <div id="units-table" class="table-container">
                 <div class="page-loader"><div class="spinner"></div></div>
             </div>
@@ -49,6 +68,19 @@ async function renderPage(container, apartmentId, apartments = null) {
     }
 
     document.getElementById('add-unit-btn').addEventListener('click', () => openAddModal(apartmentId));
+
+    const searchInput = container.querySelector('#unit-search');
+    const typeFilter = container.querySelector('#type-filter');
+    const statusFilter = container.querySelector('#status-filter');
+
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => loadUnits(apartmentId), 300);
+    });
+    typeFilter.addEventListener('change', () => loadUnits(apartmentId));
+    statusFilter.addEventListener('change', () => loadUnits(apartmentId));
+
     await loadUnits(apartmentId);
 }
 
@@ -56,11 +88,68 @@ async function loadUnits(apartmentId) {
     try {
         const response = await apiService.get(`/units/apartment/${apartmentId}`);
         if (!response.success) throw new Error(response.message);
-        const units = response.data;
+        let units = response.data;
+
+        const searchTerm = document.getElementById('unit-search')?.value.trim().toLowerCase();
+        const typeVal = document.getElementById('type-filter')?.value;
+        const statusVal = document.getElementById('status-filter')?.value;
+
+        if (searchTerm) {
+            units = units.filter(u => u.unit_number.toLowerCase().includes(searchTerm));
+        }
+        if (typeVal) {
+            units = units.filter(u => u.unit_type === typeVal);
+        }
+        if (statusVal) {
+            units = units.filter(u => u.status === statusVal);
+        }
+
         const table = document.getElementById('units-table');
+        const summaryDiv = document.getElementById('units-summary');
+
+        const totalUnits = units.length;
+        const occupiedUnits = units.filter(u => u.status === 'occupied').length;
+        const vacantUnits = units.filter(u => u.status === 'vacant').length;
+        const expectedRent = units
+            .filter(u => u.status === 'occupied')
+            .reduce((sum, u) => sum + parseFloat(u.monthly_rent || 0), 0);
+
+        summaryDiv.innerHTML = `
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <div class="stat-card">
+                    <div class="stat-icon primary"><i class="fas fa-door-open"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">Total Units</div>
+                        <div class="stat-value">${totalUnits}</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon success"><i class="fas fa-home"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">Occupied</div>
+                        <div class="stat-value">${occupiedUnits}</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon warning"><i class="fas fa-door-closed"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">Vacant</div>
+                        <div class="stat-value">${vacantUnits}</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon info"><i class="fas fa-money-bill-wave"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">Expected Rent</div>
+                        <div class="stat-value">${formatCurrency(expectedRent)}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        summaryDiv.style.display = 'block';
 
         if (units.length === 0) {
-            table.innerHTML = `<div class="empty-state"><i class="fas fa-door-closed"></i><h3>No Units</h3></div>`;
+            table.innerHTML = `<div class="empty-state"><i class="fas fa-door-closed"></i><h3>No Units Found</h3></div>`;
             return;
         }
 
@@ -88,11 +177,6 @@ async function loadUnits(apartmentId) {
                 </tbody>
             </table>`;
 
-        // Attach global edit/delete functions (backward compatibility)
-        window.editUnit = (id) => editUnit(id, apartmentId);
-        window.deleteUnit = (id) => deleteUnit(id, apartmentId);
-
-        // Event delegation for assign tenant button
         table.addEventListener('click', (e) => {
             const assignBtn = e.target.closest('.assign-tenant-btn');
             if (assignBtn) {
@@ -101,14 +185,17 @@ async function loadUnits(apartmentId) {
             }
         });
 
+        window.editUnit = (id) => editUnit(id, apartmentId);
+        window.deleteUnit = (id) => deleteUnit(id, apartmentId);
+
     } catch (error) {
         document.getElementById('units-table').innerHTML = `<div class="error-state"><p>${error.message}</p></div>`;
+        document.getElementById('units-summary').style.display = 'none';
     }
 }
 
 async function openAssignTenantModal(unitId, apartmentId) {
     const { showFormModal } = await import('../../components/modal.js');
-    // Fetch active tenants – for caretaker, filter by their apartment(s)
     let query = '?status=active';
     if (authService.getRole() === 'caretaker') {
         query += `&apartment_id=${apartmentId}`;
@@ -133,7 +220,6 @@ async function openAssignTenantModal(unitId, apartmentId) {
     showFormModal('Assign Tenant', formHtml, async (overlay) => {
         const tenantId = overlay.querySelector('#assign-tenant').value;
         try {
-            // Fetch the tenant's current unit (if any) to free it up later (backend handles unit status swap)
             await apiService.put(`/tenants/${tenantId}`, { unit_id: unitId });
             showToast('Tenant assigned successfully', 'success');
             loadUnits(apartmentId);
@@ -144,7 +230,6 @@ async function openAssignTenantModal(unitId, apartmentId) {
     });
 }
 
-// The rest of the functions (openAddModal, editUnit, deleteUnit) remain exactly as before.
 function openAddModal(apartmentId) {
     const formHtml = `
         <div class="form-group">
