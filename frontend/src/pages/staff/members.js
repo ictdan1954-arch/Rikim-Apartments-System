@@ -17,12 +17,11 @@ export default async function staffMembers(container) {
         }
     }
 
-    // Local cache of members with account info (from the new endpoint)
+    // Local cache of members with account info (for caretaker, fetched from accounts endpoint)
     let membersWithAccounts = [];
 
-    // Fetch members with account status from the new endpoint (no permission error)
     async function loadMembersWithAccounts() {
-        const aptId = defaultAptId || ''; // caretaker
+        const aptId = defaultAptId || '';
         if (!aptId) return;
         try {
             const res = await apiService.get(`/staff/members/apartment/${aptId}/accounts`);
@@ -38,25 +37,33 @@ export default async function staffMembers(container) {
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Staff Members${defaultAptName ? ` – ${defaultAptName}` : ''}</h3>
-                <button class="btn btn-primary" id="add-member-btn">
-                    <i class="fas fa-plus"></i> Add Member
-                </button>
+                <button class="btn btn-primary" id="add-member-btn"><i class="fas fa-plus"></i> Add Member</button>
             </div>
-            ${role === 'landlord' ? `
             <div class="filter-bar">
-                <select class="form-select" id="filter-apt"><option value="">All Apartments</option></select>
-                <select class="form-select" id="filter-role"><option value="">All Roles</option></select>
-            </div>` : ''}
-            <div id="members-table" class="table-container">
-                <div class="page-loader"><div class="spinner"></div></div>
+                <div class="search-bar" style="flex:1;">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="form-input" id="staff-search" placeholder="Search by name or phone...">
+                </div>
+                ${role === 'landlord' ? `
+                <div class="form-group" style="min-width:180px;">
+                    <select class="form-select" id="filter-apt"><option value="">All Apartments</option></select>
+                </div>
+                <div class="form-group" style="min-width:180px;">
+                    <select class="form-select" id="filter-role"><option value="">All Roles</option></select>
+                </div>` : ''}
             </div>
+            <div id="staff-summary" class="mt-2" style="display:none;"></div>
+            <div id="members-table" class="table-container"><div class="page-loader"><div class="spinner"></div></div></div>
         </div>`;
 
+    const searchInput = container.querySelector('#staff-search');
     const filterApt = role === 'landlord' ? container.querySelector('#filter-apt') : null;
     const filterRole = role === 'landlord' ? container.querySelector('#filter-role') : null;
     const addBtn = container.querySelector('#add-member-btn');
     const membersTable = container.querySelector('#members-table');
+    const summaryDiv = container.querySelector('#staff-summary');
 
+    // Populate landlord dropdowns
     if (role === 'landlord') {
         const [aptRes, rolesRes] = await Promise.all([apiService.get('/apartments'), apiService.get('/staff/roles')]);
         if (aptRes.success) aptRes.data.forEach(a => filterApt.innerHTML += `<option value="${a.id}">${a.name}</option>`);
@@ -67,62 +74,96 @@ export default async function staffMembers(container) {
 
     addBtn.addEventListener('click', openAddModal);
 
-    let selectedAptId = defaultAptId || '';
-    let selectedRoleId = '';
+    // Debounced search
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(loadMembers, 300);
+    });
 
     // If coming from Staff Roles page with a role parameter, pre‑select that role
     const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
     const roleFromUrl = urlParams.get('role');
-    if (roleFromUrl && role === 'landlord') {
-        selectedRoleId = roleFromUrl;
-        if (filterRole) filterRole.value = roleFromUrl;
+    if (roleFromUrl && role === 'landlord' && filterRole) {
+        filterRole.value = roleFromUrl;
     }
+
+    let selectedAptId = defaultAptId || '';
+    let selectedRoleId = role === 'landlord' && filterRole ? filterRole.value : '';
 
     async function loadMembers() {
         if (role === 'landlord') {
-            selectedAptId = filterApt.value;
+            selectedAptId = filterApt.value;    // '' means all
             selectedRoleId = filterRole.value;
         }
-        if (!selectedAptId) {
-            membersTable.innerHTML = `<p class="text-center p-3">${role === 'caretaker' ? 'No apartment assigned.' : 'Select an apartment to view staff.'}</p>`;
+        const searchTerm = searchInput.value.trim().toLowerCase();
+
+        // Caretaker: if no defaultAptId, show message
+        if (role === 'caretaker' && !defaultAptId) {
+            membersTable.innerHTML = `<p class="text-center p-3">No apartment assigned.</p>`;
             return;
         }
 
-        // For caretaker we already have membersWithAccounts; for landlord fetch fresh from new endpoint
         let members = [];
         if (role === 'caretaker') {
+            // Caretaker uses local cache (membersWithAccounts) and applies filters client-side
             members = membersWithAccounts;
             if (selectedRoleId) members = members.filter(m => m.staff_role_id === selectedRoleId);
+            if (searchTerm) members = members.filter(m => m.full_name.toLowerCase().includes(searchTerm) || m.phone.includes(searchTerm));
         } else {
+            // Landlord: fetch from backend (supports 'all' and individual apartment)
+            const endpoint = selectedAptId
+                ? `/staff/members/apartment/${selectedAptId}/accounts`
+                : `/staff/members/apartment/all/accounts`;
+            let query = '';
+            if (selectedRoleId) query += `role_id=${selectedRoleId}&`;
+            if (searchTerm) query += `search=${encodeURIComponent(searchTerm)}&`;
+            const fullUrl = `${endpoint}${query ? '?' + query : ''}`;
             try {
-                const response = await apiService.get(`/staff/members/apartment/${selectedAptId}/accounts`);
-                members = response.success ? response.data : [];
+                const res = await apiService.get(fullUrl);
+                if (res.success) members = res.data;
             } catch (e) {
                 membersTable.innerHTML = `<div class="error-state"><p>${e.message}</p></div>`;
                 return;
             }
         }
 
-        // Sort caretaker first for caretaker view
-        if (role === 'caretaker' && members.length > 0) {
-            members = [...members].sort((a, b) => {
-                const aC = a.staff_roles?.role_name?.toLowerCase() === 'caretaker';
-                const bC = b.staff_roles?.role_name?.toLowerCase() === 'caretaker';
-                if (aC && !bC) return -1;
-                if (!aC && bC) return 1;
-                return 0;
-            });
-        }
+        // --- Summary cards ---
+        const total = members.length;
+        const active = members.filter(m => m.status === 'active').length;
+        const suspended = members.filter(m => m.status === 'suspended').length;
+        const terminated = members.filter(m => m.status === 'terminated').length;
+
+        summaryDiv.innerHTML = `
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <div class="stat-card"><div class="stat-icon primary"><i class="fas fa-users"></i></div><div class="stat-info"><div class="stat-label">Total</div><div class="stat-value">${total}</div></div></div>
+                <div class="stat-card"><div class="stat-icon success"><i class="fas fa-check-circle"></i></div><div class="stat-info"><div class="stat-label">Active</div><div class="stat-value">${active}</div></div></div>
+                <div class="stat-card"><div class="stat-icon warning"><i class="fas fa-pause-circle"></i></div><div class="stat-info"><div class="stat-label">Suspended</div><div class="stat-value">${suspended}</div></div></div>
+                <div class="stat-card"><div class="stat-icon danger"><i class="fas fa-times-circle"></i></div><div class="stat-info"><div class="stat-label">Terminated</div><div class="stat-value">${terminated}</div></div></div>
+            </div>
+        `;
+        summaryDiv.style.display = 'block';
 
         if (members.length === 0) {
-            membersTable.innerHTML = `<div class="empty-state"><h3>No staff members</h3></div>`;
+            membersTable.innerHTML = `<div class="empty-state"><h3>No staff members found</h3></div>`;
             return;
         }
+
+        // Show apartment column only for landlord when viewing "All Apartments"
+        const showApartmentCol = role === 'landlord' && !selectedAptId;
 
         membersTable.innerHTML = `
             <table class="table">
                 <thead>
-                    <tr><th>Name</th><th>Role</th><th>Phone</th><th>Salary</th><th>Status</th><th>Actions</th></tr>
+                    <tr>
+                        <th>Name</th>
+                        ${showApartmentCol ? '<th>Apartment</th>' : ''}
+                        <th>Role</th>
+                        <th>Phone</th>
+                        <th>Salary</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
                 </thead>
                 <tbody>
                     ${members.map(m => {
@@ -145,14 +186,15 @@ export default async function staffMembers(container) {
                         return `
                         <tr>
                             <td>${m.full_name}</td>
+                            ${showApartmentCol ? `<td>${m.apartments?.name || 'N/A'}</td>` : ''}
                             <td>${m.staff_roles?.role_name || 'N/A'}</td>
                             <td>${phone}</td>
                             <td>${formatCurrency(m.monthly_salary)}</td>
-                            <td><span class="badge badge-${m.status === 'active' ? 'success' : 'danger'}">${m.status}</span></td>
+                            <td><span class="badge badge-${m.status === 'active' ? 'success' : m.status === 'suspended' ? 'warning' : 'danger'}">${m.status}</span></td>
                             <td>
                                 <div class="table-actions">
                                     <button class="edit-btn" data-id="${m.id}" title="Edit"><i class="fas fa-edit"></i></button>
-                                    <button class="pay-btn" data-id="${m.id}" data-name="${m.full_name}" data-apt="${selectedAptId}" title="Pay Salary"><i class="fas fa-money-bill"></i></button>
+                                    <button class="pay-btn" data-id="${m.id}" data-name="${m.full_name}" data-apt="${m.apartment_id}" title="Pay Salary"><i class="fas fa-money-bill"></i></button>
                                     ${accountButton}
                                 </div>
                             </td>
@@ -161,38 +203,27 @@ export default async function staffMembers(container) {
                 </tbody>
             </table>`;
 
-        // Event delegation
+        // Event delegation (same as before)
         membersTable.addEventListener('click', (e) => {
             const editBtn = e.target.closest('.edit-btn');
             if (editBtn) { editStaffMember(editBtn.dataset.id); return; }
-
             const payBtn = e.target.closest('.pay-btn');
             if (payBtn) { paySalary(payBtn.dataset.id, payBtn.dataset.name, payBtn.dataset.apt); return; }
-
             const createCaretakerBtn = e.target.closest('.create-caretaker-btn');
             if (createCaretakerBtn) { createCaretakerAccount(createCaretakerBtn.dataset.id, createCaretakerBtn.dataset.name, createCaretakerBtn.dataset.phone); return; }
-
             const createStaffBtn = e.target.closest('.create-staff-account-btn');
             if (createStaffBtn) { createStaffAccount(createStaffBtn.dataset.id, createStaffBtn.dataset.name, createStaffBtn.dataset.phone); return; }
-
             const editAccountBtn = e.target.closest('.edit-account-btn');
             if (editAccountBtn) {
-                editStaffAccount(
-                    editAccountBtn.dataset.id,
-                    editAccountBtn.dataset.name,
-                    editAccountBtn.dataset.phone,
-                    editAccountBtn.dataset.username,
-                    editAccountBtn.dataset.userid
-                );
+                editStaffAccount(editAccountBtn.dataset.id, editAccountBtn.dataset.name, editAccountBtn.dataset.phone, editAccountBtn.dataset.username, editAccountBtn.dataset.userid);
                 return;
             }
         });
-
     }
 
     loadMembers();
 
-    // ---------- MODALS ----------
+    // ----- MODALS (unchanged) -----
     async function openAddModal() {
         const { showFormModal } = await import('../../components/modal.js');
         let apartmentsHtml = '', rolesHtml = '';
@@ -225,10 +256,7 @@ export default async function staffMembers(container) {
                 monthly_salary: parseFloat(overlay.querySelector('#mem-salary').value),
                 date_hired: overlay.querySelector('#mem-date').value
             };
-            if (!data.full_name || !data.phone || !data.monthly_salary) {
-                showToast('Fill all required fields', 'error');
-                return false;
-            }
+            if (!data.full_name || !data.phone || !data.monthly_salary) { showToast('Fill all required fields', 'error'); return false; }
             try {
                 await apiService.post('/staff/members', data);
                 showToast('Staff member added', 'success');
@@ -276,7 +304,6 @@ export default async function staffMembers(container) {
         });
     }
 
-    // Create staff account – updates local cache immediately
     async function createStaffAccount(staffId, name, phone) {
         const { showFormModal } = await import('../../components/modal.js');
         const defaultPassword = phone.replace(/\D/g, '').slice(-6) || '123456';
@@ -293,7 +320,6 @@ export default async function staffMembers(container) {
             if (!username || !password) { showToast('Username and password required', 'error'); return false; }
             try {
                 const res = await apiService.post('/staff/accounts', { staff_id: staffId, username, password });
-                // Update local cache
                 const member = membersWithAccounts.find(m => m.id === staffId);
                 if (member) {
                     member.user = { id: res.data?.id, phone, username, role: 'staff' };
@@ -305,7 +331,6 @@ export default async function staffMembers(container) {
         });
     }
 
-    // Edit existing account – updates local cache in-place
     async function editStaffAccount(staffId, name, phone, currentUsername, userId) {
         const { showFormModal } = await import('../../components/modal.js');
         const formHtml = `
@@ -317,7 +342,6 @@ export default async function staffMembers(container) {
             const newUsername = overlay.querySelector('#edit-staff-username').value.trim();
             const newPassword = overlay.querySelector('#edit-staff-password').value;
             if (!newUsername) { showToast('Username is required', 'error'); return false; }
-
             const body = { username: newUsername };
             if (newPassword) {
                 if (newPassword.length < 6) { showToast('Password min 6 characters', 'error'); return false; }
@@ -325,7 +349,6 @@ export default async function staffMembers(container) {
             }
             try {
                 await apiService.put(`/auth/users/${userId}`, body);
-                // Update local cache
                 const member = membersWithAccounts.find(m => m.id === staffId);
                 if (member && member.user) member.user.username = newUsername;
                 showToast('Account updated', 'success');
@@ -334,7 +357,6 @@ export default async function staffMembers(container) {
         });
     }
 
-    // Create caretaker account – updates local cache immediately
     async function createCaretakerAccount(staffId, name, phone) {
         const { showFormModal } = await import('../../components/modal.js');
         const defaultPassword = phone.replace(/\D/g, '').slice(-6) || '123456';
@@ -353,7 +375,6 @@ export default async function staffMembers(container) {
             if (!username) { showToast('Username required', 'error'); return false; }
             try {
                 const res = await apiService.post('/auth/register', { full_name: name, phone: phone, password, role: 'caretaker', username });
-                // Update local cache
                 const member = membersWithAccounts.find(m => m.id === staffId);
                 if (member) {
                     member.user = { id: res.data?.id, phone, username, role: 'caretaker' };
