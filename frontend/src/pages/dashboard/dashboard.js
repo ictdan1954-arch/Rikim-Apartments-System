@@ -45,7 +45,15 @@ export default async function dashboardPage(container) {
 
 function renderAdminDashboard(container, data, role) {
     const canManage = role === 'landlord' || role === 'caretaker';
-    
+    const isLandlord = role === 'landlord';
+
+    // Landlord-specific data
+    const occupancyRate = data.occupancy_rate || 0;
+    const totalArrears = data.total_arrears || 0;
+    const apartmentsBreakdown = data.apartments_breakdown || [];
+    const recentRent = data.recent_rent_payments || [];
+    const recentMaintenance = data.recent_maintenance || [];
+
     container.innerHTML = `
         <!-- Quick Actions -->
         ${canManage ? `
@@ -79,16 +87,44 @@ function renderAdminDashboard(container, data, role) {
             </div>
         </div>` : ''}
 
-        <!-- Stats Cards -->
+        <!-- Stats Cards (Landlord gets occupancy + arrears) -->
         <div class="dashboard-stats">
-            ${role === 'landlord' ? `
+            ${isLandlord ? `
             <div class="stat-card">
                 <div class="stat-icon primary"><i class="fas fa-building"></i></div>
                 <div class="stat-info">
                     <div class="stat-value">${data.total_apartments}</div>
                     <div class="stat-label">Apartments</div>
                 </div>
-            </div>` : ''}
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon success"><i class="fas fa-chart-pie"></i></div>
+                <div class="stat-info">
+                    <div class="stat-value">${occupancyRate}%</div>
+                    <div class="stat-label">Occupancy</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon danger"><i class="fas fa-exclamation-circle"></i></div>
+                <div class="stat-info">
+                    <div class="stat-value">${formatCurrency(totalArrears)}</div>
+                    <div class="stat-label">Total Arrears</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon info"><i class="fas fa-users"></i></div>
+                <div class="stat-info">
+                    <div class="stat-value">${data.active_tenants}</div>
+                    <div class="stat-label">Active Tenants</div>
+                </div>
+            </div>` : `
+            <div class="stat-card">
+                <div class="stat-icon primary"><i class="fas fa-building"></i></div>
+                <div class="stat-info">
+                    <div class="stat-value">${data.total_apartments}</div>
+                    <div class="stat-label">Apartments</div>
+                </div>
+            </div>
             <div class="stat-card">
                 <div class="stat-icon success"><i class="fas fa-home"></i></div>
                 <div class="stat-info">
@@ -109,10 +145,34 @@ function renderAdminDashboard(container, data, role) {
                     <div class="stat-value">${data.active_tenants}</div>
                     <div class="stat-label">Active Tenants</div>
                 </div>
-            </div>
+            </div>`}
         </div>
 
-        <!-- Financial Summary -->
+        <!-- Landlord: Per‑Apartment Breakdown -->
+        ${isLandlord && apartmentsBreakdown.length > 0 ? `
+        <div class="card mb-2">
+            <div class="card-header"><h3 class="card-title">Apartment Breakdown</h3></div>
+            <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+                ${apartmentsBreakdown.map(apt => {
+                    const aptOccupancy = apt.total_units ? Math.round((apt.occupied_units / apt.total_units) * 100) : 0;
+                    return `
+                    <div class="stat-card" onclick="window.router.navigate('/apartments/${apt.id}')" style="cursor:pointer; flex-direction:column; align-items:flex-start;">
+                        <div class="stat-label" style="font-weight:700; font-size:1rem;">${apt.name}</div>
+                        <div style="display:flex; justify-content:space-between; width:100%; margin-top:8px;">
+                            <span>Units: ${apt.occupied_units}/${apt.total_units}</span>
+                            <span>${aptOccupancy}%</span>
+                        </div>
+                        <div style="width:100%; background:var(--border); height:6px; border-radius:3px; margin-top:4px;">
+                            <div style="width:${aptOccupancy}%; background:var(--primary); height:100%; border-radius:3px;"></div>
+                        </div>
+                        <div class="text-muted mt-1">Rent collected: ${formatCurrency(apt.rent_collected_this_month)}</div>
+                        <span class="badge badge-${apt.status === 'active' ? 'success' : 'secondary'}">${apt.status}</span>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>` : ''}
+
+        <!-- Financial Overview -->
         <div class="dashboard-grid">
             <div class="card">
                 <div class="card-header">
@@ -153,9 +213,43 @@ function renderAdminDashboard(container, data, role) {
                 </div>
             </div>
         </div>
+
+        <!-- Recent Activity (Landlord only) -->
+        ${isLandlord ? `
+        <div class="dashboard-grid mt-2">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Rent Payments</h3>
+                </div>
+                ${recentRent.length > 0 ? recentRent.map(p => `
+                    <div class="info-card mb-1">
+                        <div class="info-card-icon"><i class="fas fa-money-bill"></i></div>
+                        <div class="info-card-content">
+                            <h4>${p.tenants?.full_name || 'N/A'} – ${p.units?.unit_number || ''}</h4>
+                            <p>${formatCurrency(p.amount_paid)} on ${formatDate(p.payment_date)}</p>
+                        </div>
+                    </div>
+                `).join('') : '<p class="text-muted p-2">No recent payments.</p>'}
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Recent Maintenance</h3>
+                </div>
+                ${recentMaintenance.length > 0 ? recentMaintenance.map(m => `
+                    <div class="info-card mb-1">
+                        <div class="info-card-icon"><i class="fas fa-tools"></i></div>
+                        <div class="info-card-content">
+                            <h4>${m.title}</h4>
+                            <p>${m.units?.unit_number || ''} – <span class="badge badge-${m.status === 'resolved' ? 'success' : 'warning'}">${m.status}</span></p>
+                            <small class="text-muted">${formatDate(m.date_reported)}</small>
+                        </div>
+                    </div>
+                `).join('') : '<p class="text-muted p-2">No recent requests.</p>'}
+            </div>
+        </div>` : ''}
     `;
 
-    // If caretaker, fetch and display their assigned apartments
+    // If caretaker, fetch apartment details (unchanged)
     if (role === 'caretaker') {
         fetchCaretakerApartments();
     }
