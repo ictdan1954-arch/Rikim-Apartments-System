@@ -2,6 +2,7 @@ import { apiService } from '../../services/api.service.js';
 import { authService } from '../../services/auth.service.js';
 import { formatCurrency, formatDate, capitalize } from '../../utils/formatters.js';
 import { showToast } from '../../components/toast.js';
+import { CONFIG } from '../../config/constants.js';
 
 export default async function rentPayments(container) {
     const role = authService.getRole();
@@ -50,7 +51,16 @@ export default async function rentPayments(container) {
                 <div class="form-group">
                     <input type="date" class="form-input" id="filter-end" placeholder="End date">
                 </div>
+                <div class="form-group">
+                    <button class="btn btn-sm btn-outline" id="btn-this-month">This Month</button>
+                    <button class="btn btn-sm btn-outline" id="btn-last-month">Last Month</button>
+                </div>
+                <div class="search-bar" style="flex:1;">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="form-input" id="payment-search" placeholder="Search tenant or unit...">
+                </div>
             </div>
+            <div id="payment-summary" class="mt-2" style="display:none;"></div>
             <div id="payments-table" class="table-container">
                 <div class="page-loader"><div class="spinner"></div></div>
             </div>
@@ -59,8 +69,12 @@ export default async function rentPayments(container) {
     const aptSelect = container.querySelector('#filter-apartment');
     const startInput = container.querySelector('#filter-start');
     const endInput = container.querySelector('#filter-end');
+    const searchInput = container.querySelector('#payment-search');
+    const btnThisMonth = container.querySelector('#btn-this-month');
+    const btnLastMonth = container.querySelector('#btn-last-month');
     const recordBtn = container.querySelector('#record-payment-btn');
     const paymentsTable = container.querySelector('#payments-table');
+    const summaryDiv = container.querySelector('#payment-summary');
 
     if (role === 'landlord') {
         aptSelect.addEventListener('change', loadPayments);
@@ -69,12 +83,38 @@ export default async function rentPayments(container) {
     endInput.addEventListener('change', loadPayments);
     recordBtn.addEventListener('click', openRecordModal);
 
+    // Quick date buttons
+    const now = new Date();
+    const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const lastDayThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+    const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+
+    btnThisMonth.addEventListener('click', () => {
+        startInput.value = firstDayThisMonth;
+        endInput.value = lastDayThisMonth;
+        loadPayments();
+    });
+    btnLastMonth.addEventListener('click', () => {
+        startInput.value = firstDayLastMonth;
+        endInput.value = lastDayLastMonth;
+        loadPayments();
+    });
+
+    // Debounced search
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(loadPayments, 300);
+    });
+
     loadPayments();
 
     async function loadPayments() {
         const apartmentId = aptSelect.value;
         const start = startInput.value;
         const end = endInput.value;
+        const search = searchInput.value.trim().toLowerCase();
 
         let query = '';
         if (apartmentId) query += `apartmentId=${apartmentId}&`;
@@ -86,17 +126,61 @@ export default async function rentPayments(container) {
 
         try {
             const response = await apiService.get(endpoint);
-            const payments = response.success ? response.data : [];
+            let payments = response.success ? response.data : [];
+
+            // Client-side search filter (tenant name or unit number)
+            if (search) {
+                payments = payments.filter(p =>
+                    (p.tenants?.full_name || '').toLowerCase().includes(search) ||
+                    (p.units?.unit_number || '').toLowerCase().includes(search)
+                );
+            }
+
+            // Summary calculations
+            const totalCollected = payments.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0);
+            // Expected rent for the period cannot be easily calculated here, we skip it for now.
+            // We'll show total collected, count, and average.
+            const count = payments.length;
+            const average = count ? Math.round(totalCollected / count) : 0;
+
+            summaryDiv.innerHTML = `
+                <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                    <div class="stat-card">
+                        <div class="stat-icon success"><i class="fas fa-money-bill-wave"></i></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Total Collected</div>
+                            <div class="stat-value">${formatCurrency(totalCollected)}</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon info"><i class="fas fa-list-ul"></i></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Payments</div>
+                            <div class="stat-value">${count}</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon primary"><i class="fas fa-calculator"></i></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Average</div>
+                            <div class="stat-value">${formatCurrency(average)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            summaryDiv.style.display = 'block';
 
             if (payments.length === 0) {
-                paymentsTable.innerHTML = `<div class="empty-state"><i class="fas fa-money-bill-wave"></i><h3>No Payments</h3></div>`;
+                paymentsTable.innerHTML = `<div class="empty-state"><i class="fas fa-money-bill-wave"></i><h3>No Payments Found</h3></div>`;
                 return;
             }
 
             paymentsTable.innerHTML = `
                 <table class="table">
                     <thead>
-                        <tr><th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Period</th><th>Method</th><th>Purpose</th></tr>
+                        <tr>
+                            <th>Date</th><th>Tenant</th><th>Unit</th><th>Amount</th><th>Period</th><th>Method</th><th>Purpose</th><th>Actions</th>
+                        </tr>
                     </thead>
                     <tbody>
                         ${payments.map(p => `
@@ -108,15 +192,116 @@ export default async function rentPayments(container) {
                                 <td>${formatDate(p.period_start)} - ${formatDate(p.period_end)}</td>
                                 <td>${capitalize(p.payment_method)}</td>
                                 <td>${capitalize(p.purpose || 'monthly_rent')}</td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="edit-payment-btn" data-id="${p.id}" data-amount="${p.amount_paid}" data-date="${p.payment_date}" data-start="${p.period_start}" data-end="${p.period_end}" data-method="${p.payment_method}" data-ref="${p.reference_number || ''}" data-purpose="${p.purpose || 'monthly_rent'}" title="Edit"><i class="fas fa-edit"></i></button>
+                                        <button class="danger delete-payment-btn" data-id="${p.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </td>
                             </tr>`).join('')}
                     </tbody>
                 </table>`;
+
+            // Event delegation
+            paymentsTable.addEventListener('click', (e) => {
+                const editBtn = e.target.closest('.edit-payment-btn');
+                if (editBtn) {
+                    openEditModal(editBtn.dataset);
+                    return;
+                }
+                const deleteBtn = e.target.closest('.delete-payment-btn');
+                if (deleteBtn) {
+                    deletePayment(deleteBtn.dataset.id);
+                    return;
+                }
+            });
+
         } catch (error) {
             paymentsTable.innerHTML = `<div class="error-state"><p>${error.message}</p></div>`;
+            summaryDiv.style.display = 'none';
         }
     }
 
-    // ============ RECORD PAYMENT MODAL ============
+    // ---------- EDIT PAYMENT MODAL ----------
+    function openEditModal(data) {
+        const { showFormModal } = await import('../../components/modal.js');
+        const formHtml = `
+            <div class="form-group">
+                <label class="form-label">Amount (KES)</label>
+                <input type="number" class="form-input" id="edit-amount" value="${data.amount}" step="100" min="1" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Payment Date</label>
+                <input type="date" class="form-input" id="edit-date" value="${data.date}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Period Start</label>
+                <input type="date" class="form-input" id="edit-start" value="${data.start}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Period End</label>
+                <input type="date" class="form-input" id="edit-end" value="${data.end}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Method</label>
+                <select class="form-select" id="edit-method">
+                    ${['cash', 'mpesa', 'bank_transfer', 'other'].map(m => `<option value="${m}" ${m === data.method ? 'selected' : ''}>${capitalize(m)}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Purpose</label>
+                <select class="form-select" id="edit-purpose">
+                    <option value="monthly_rent" ${data.purpose === 'monthly_rent' ? 'selected' : ''}>Monthly Rent</option>
+                    <option value="arrears_clearance" ${data.purpose === 'arrears_clearance' ? 'selected' : ''}>Arrears Clearance</option>
+                    <option value="deposit_topup" ${data.purpose === 'deposit_topup' ? 'selected' : ''}>Deposit Top‑up</option>
+                    <option value="other" ${data.purpose === 'other' ? 'selected' : ''}>Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Reference</label>
+                <input type="text" class="form-input" id="edit-ref" value="${data.ref}">
+            </div>`;
+
+        showFormModal('Edit Payment', formHtml, async (overlay) => {
+            const updates = {
+                amount_paid: parseFloat(overlay.querySelector('#edit-amount').value),
+                payment_date: overlay.querySelector('#edit-date').value,
+                period_start: overlay.querySelector('#edit-start').value,
+                period_end: overlay.querySelector('#edit-end').value,
+                payment_method: overlay.querySelector('#edit-method').value,
+                purpose: overlay.querySelector('#edit-purpose').value,
+                reference_number: overlay.querySelector('#edit-ref').value
+            };
+            if (!updates.amount_paid || !updates.payment_date || !updates.period_start || !updates.period_end) {
+                showToast('All fields required', 'error');
+                return false;
+            }
+            try {
+                await apiService.put(`/rent/${data.id}`, updates);
+                showToast('Payment updated', 'success');
+                loadPayments();
+            } catch (e) {
+                showToast(e.message, 'error');
+                return false;
+            }
+        });
+    }
+
+    // ---------- DELETE PAYMENT ----------
+    async function deletePayment(id) {
+        const { showConfirm } = await import('../../components/modal.js');
+        showConfirm('Delete Payment', 'Are you sure you want to delete this payment?', async () => {
+            try {
+                await apiService.delete(`/rent/${id}`);
+                showToast('Payment deleted', 'success');
+                loadPayments();
+            } catch (e) {
+                showToast(e.message, 'error');
+            }
+        });
+    }
+
+    // ---------- RECORD PAYMENT MODAL (unchanged, but included for completeness) ----------
     async function openRecordModal() {
         let tenantsQuery = '?status=active';
         if (role === 'caretaker' && defaultAptId) {
@@ -131,25 +316,18 @@ export default async function rentPayments(container) {
         }
 
         const today = new Date().toISOString().split('T')[0];
-
         const formHtml = `
             <div class="form-group">
                 <label class="form-label">Tenant</label>
                 <select class="form-select" id="pay-tenant" onchange="window.refreshRentDetails()">
                     ${tenants.map(t => `
-                        <option value="${t.id}" 
-                                data-unit="${t.unit_id}" 
-                                data-apt="${t.units?.apartment_id}" 
-                                data-rent="${t.units?.monthly_rent || 0}" 
-                                data-phone="${t.phone || ''}"
-                                data-unitnumber="${t.units?.unit_number || ''}">
+                        <option value="${t.id}" data-unit="${t.unit_id}" data-apt="${t.units?.apartment_id}" data-rent="${t.units?.monthly_rent || 0}" data-phone="${t.phone || ''}">
                             ${t.full_name} - ${t.units?.unit_number || 'No unit'} (${t.phone})
                         </option>
                     `).join('')}
                 </select>
                 <div id="arrears-info" class="mt-1" style="font-size:0.9rem; color: var(--danger); display:none;"></div>
             </div>
-
             <div class="form-group">
                 <label class="form-label">Amount (KES)</label>
                 <div style="display:flex; gap:8px;">
@@ -158,7 +336,6 @@ export default async function rentPayments(container) {
                 </div>
                 <div id="expected-rent-info" class="mt-1" style="font-size:0.85rem; color: var(--text-secondary); display:none;"></div>
             </div>
-
             <div class="form-group">
                 <label class="form-label">Payment Date</label>
                 <input type="date" class="form-input" id="pay-date" value="${today}" required>
@@ -193,8 +370,6 @@ export default async function rentPayments(container) {
                 <label class="form-label">Reference</label>
                 <input type="text" class="form-input" id="pay-ref">
             </div>
-
-            <!-- Last 3 Payments -->
             <div class="mt-3" id="last-payments-section" style="display:none;">
                 <h4 style="font-size:0.9rem; margin-bottom:8px;">Last 3 Payments</h4>
                 <div class="table-container" style="max-height:150px; overflow-y:auto;">
@@ -203,12 +378,10 @@ export default async function rentPayments(container) {
                         <tbody id="last-payments-tbody"></tbody>
                     </table>
                 </div>
-            </div>
-        `;
+            </div>`;
 
         const { showFormModal } = await import('../../components/modal.js');
 
-        // Global helpers used by inline handlers
         window.refreshRentDetails = async function () {
             const tenantSelect = document.querySelector('#pay-tenant');
             const arrearsDiv = document.querySelector('#arrears-info');
@@ -224,7 +397,6 @@ export default async function rentPayments(container) {
             const tenantId = selectedOption?.value;
             const rent = parseFloat(selectedOption?.dataset.rent) || 0;
 
-            // Arrears
             arrearsDiv.style.display = 'none';
             if (tenantId) {
                 try {
@@ -242,7 +414,6 @@ export default async function rentPayments(container) {
                     }
                 } catch (e) {}
 
-                // Last 3 Payments
                 try {
                     const payRes = await apiService.get(`/tenants/${tenantId}/payments`);
                     if (payRes.success && payRes.data.length > 0) {
@@ -262,7 +433,6 @@ export default async function rentPayments(container) {
                 } catch (e) { lastPaymentsSection.style.display = 'none'; }
             }
 
-            // Expected rent for period
             expectedDiv.style.display = 'none';
             if (rent > 0 && startInput.value && endInput.value) {
                 const start = new Date(startInput.value);
@@ -311,8 +481,6 @@ export default async function rentPayments(container) {
                 await apiService.post('/rent', data);
                 showToast('Payment recorded', 'success');
                 loadPayments();
-
-                // Clean up global helpers
                 delete window.refreshRentDetails;
                 delete window.fillRentAmount;
             } catch (e) {
@@ -321,7 +489,6 @@ export default async function rentPayments(container) {
             }
         });
 
-        // Trigger initial data load after modal renders
         setTimeout(() => {
             if (window.refreshRentDetails) window.refreshRentDetails();
         }, 100);
