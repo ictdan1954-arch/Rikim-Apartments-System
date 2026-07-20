@@ -106,7 +106,7 @@ const staffController = {
         }
     },
 
-    // Get members – now supports 'all' for landlord
+    // Get members – supports 'all' for landlord and search
     async getMembers(req, res) {
         try {
             const { apartmentId } = req.params;
@@ -136,10 +136,11 @@ const staffController = {
         }
     },
 
-    // Get members with account status – supports 'all' for landlord
+    // Get members with account status – NOW ACCEPTS filters
     async getMembersWithAccounts(req, res) {
         try {
             const { apartmentId } = req.params;
+            const { role_id, search } = req.query;   // <-- FIX: accept filters
 
             let query = supabase
                 .from('staff_members')
@@ -151,11 +152,13 @@ const staffController = {
                 return ApiResponse.forbidden(res, 'Only landlord can view all staff');
             }
 
+            if (role_id) query = query.eq('staff_role_id', role_id);
+            if (search) query = query.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%`);
+
             const { data: members, error } = await query;
 
             if (error) throw error;
 
-            // For each member, find the corresponding user (if any)
             const phones = members.map(m => m.phone);
             const { data: users, userError } = await supabase
                 .from('users')
@@ -165,7 +168,6 @@ const staffController = {
 
             if (userError) throw userError;
 
-            // Attach account info to each member
             const result = members.map(member => {
                 const user = users.find(u => u.phone === member.phone);
                 return {
@@ -232,7 +234,6 @@ const staffController = {
         try {
             const { id } = req.params;
 
-            // Soft delete by setting status to terminated
             const { error } = await supabase
                 .from('staff_members')
                 .update({ status: 'terminated' })
@@ -257,7 +258,6 @@ const staffController = {
                 return ApiResponse.badRequest(res, `Missing fields: ${missing.join(', ')}`);
             }
 
-            // Fetch staff member details
             const { data: staff } = await supabase
                 .from('staff_members')
                 .select('full_name, phone')
@@ -268,16 +268,13 @@ const staffController = {
                 return ApiResponse.notFound(res, 'Staff member not found');
             }
 
-            // Validate password
             if (password.length < 6) {
                 return ApiResponse.badRequest(res, 'Password must be at least 6 characters');
             }
 
-            // Hash password
             const salt = await bcrypt.genSalt(10);
             const password_hash = await bcrypt.hash(password, salt);
 
-            // Create user with role 'staff'
             const { data: user, error: userError } = await supabase
                 .from('users')
                 .insert([{
