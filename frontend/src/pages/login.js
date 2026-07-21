@@ -7,7 +7,7 @@ export default async function loginPage(container) {
         <div class="auth-container">
             <div class="auth-card">
                 <div class="auth-logo">
-                    <img src="assets/images/logo.png" alt="Bandaptai Apartments" 
+                    <img src="assets/images/logo.png" alt="Rikim Apartments" 
                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" 
                          style="max-height:80px; margin-bottom:16px;">
                     <div class="logo-icon" style="display:none;">
