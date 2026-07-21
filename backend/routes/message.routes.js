@@ -5,6 +5,10 @@ const authenticate = require('../middleware/auth.middleware');
 
 router.use(authenticate);
 
+// Broadcast route (must be before /:partnerId)
+router.post('/broadcast', messageController.broadcast);
+
+// Standard routes
 router.post('/', messageController.send);
 router.get('/conversations', messageController.getConversations);
 router.get('/unread-count', messageController.getUnreadCount);
