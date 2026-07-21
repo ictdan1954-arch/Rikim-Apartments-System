@@ -23,8 +23,14 @@ export default async function tenantDetails(container, params) {
             tenant = response.data.tenant;
         }
 
-        const paymentsResponse = id ? await apiService.get(`/tenants/${tenant.id}/payments`) : { data: [] };
-        const payments = paymentsResponse.data || [];
+        // Always fetch payments (no more conditional skip for tenant's own view)
+        let payments = [];
+        try {
+            const paymentsResponse = await apiService.get(`/tenants/${tenant.id}/payments`);
+            if (paymentsResponse.success) {
+                payments = paymentsResponse.data;
+            }
+        } catch (e) { /* ignore payment fetch errors */ }
 
         // For tenant's own view, the unit info is already included; for landlord view, it's nested
         const unitNumber = id ? tenant.units?.unit_number : tenant.unit_number;
