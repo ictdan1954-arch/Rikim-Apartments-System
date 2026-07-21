@@ -1,5 +1,6 @@
 import { authService } from '../services/auth.service.js';
 import { apiService } from '../services/api.service.js';
+import { showToast } from '../components/toast.js';  // new import
 import { router } from '../router.js';
 
 export async function setupSidebar() {
@@ -22,7 +23,6 @@ export async function setupSidebar() {
                     </a>
                 `).join('');
 
-                // Find the "PROPERTIES" section and replace its links
                 const sections = nav.querySelectorAll('.nav-section');
                 sections.forEach(section => {
                     const titleEl = section.querySelector('.nav-section-title');
@@ -33,7 +33,6 @@ export async function setupSidebar() {
                     }
                 });
 
-                // Re-attach click handlers to all links (including new ones)
                 nav.querySelectorAll('.nav-link').forEach(link => {
                     link.addEventListener('click', () => {
                         document.getElementById('sidebar').classList.remove('open');
@@ -42,6 +41,55 @@ export async function setupSidebar() {
             }
         } catch (e) {
             // leave default "My Apartments" if fetch fails
+        }
+    }
+
+    // Attach click handler for Messages (tenant)
+    if (role === 'tenant') {
+        const messagesLink = document.querySelector('.nav-link[data-href="/messages"]');
+        if (messagesLink) {
+            messagesLink.addEventListener('click', async (e) => {
+                e.preventDefault();
+                try {
+                    // Fetch the tenant's apartment info
+                    const dashRes = await apiService.get('/dashboard/tenant');
+                    if (!dashRes.success || !dashRes.data.tenant) {
+                        showToast('Could not load your apartment info', 'error');
+                        return;
+                    }
+                    const tenant = dashRes.data.tenant;
+                    // Get caretakers for that apartment
+                    const caretakerRes = await apiService.get(`/apartments/${tenant.apartment_id}/caretakers`);
+                    if (!caretakerRes.success || !caretakerRes.data.length) {
+                        showToast('No caretaker assigned to your apartment', 'warning');
+                        return;
+                    }
+                    const caretakers = caretakerRes.data;
+                    if (caretakers.length === 1) {
+                        const c = caretakers[0];
+                        const { openChatModal } = await import('./chat.js');
+                        openChatModal(authService.user?.id, c.user_id, c.users?.full_name);
+                    } else {
+                        // Multiple caretakers – let the tenant choose
+                        const { showFormModal } = await import('./modal.js');
+                        const formHtml = `
+                            <div class="form-group">
+                                <label class="form-label">Select Caretaker</label>
+                                <select class="form-select" id="caretaker-select">
+                                    ${caretakers.map(c => `<option value="${c.user_id}">${c.users?.full_name}</option>`).join('')}
+                                </select>
+                            </div>`;
+                        showFormModal('Message Caretaker', formHtml, async (overlay) => {
+                            const selectedId = overlay.querySelector('#caretaker-select').value;
+                            const selectedName = caretakers.find(c => c.user_id === selectedId)?.users?.full_name;
+                            const { openChatModal } = await import('./chat.js');
+                            openChatModal(authService.user?.id, selectedId, selectedName);
+                        });
+                    }
+                } catch (err) {
+                    showToast('Failed to load caretakers', 'error');
+                }
+            });
         }
     }
 
@@ -102,6 +150,7 @@ function getMenuItems(role) {
         { section: 'MY STUFF', items: [
             { icon: 'fa-history', text: 'Payment History', href: '/tenants/my' },
             { icon: 'fa-tools', text: 'Maintenance', href: '/maintenance/tenant' },
+            { icon: 'fa-envelope', text: 'Messages', href: '/messages' },  // NEW
         ]},
     ];
 
