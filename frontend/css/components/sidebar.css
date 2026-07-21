@@ -1,6 +1,6 @@
 /* =============================================
-   SIDEBAR - ESTATE CALM
-   Warm, grounded, and highly intuitive.
+   SIDEBAR - RIKIM APARTMENTS MODERN HERITAGE
+   Deep Slate · Warm Accents · Premium Navigation
    ============================================= */
 
 .sidebar {
@@ -9,13 +9,13 @@
     position: fixed;
     left: 0;
     top: 0;
-    background: #2D2A28; /* Deep warm charcoal - anchors the UI */
+    background: #2A2A2A; /* Deep slate – modern & grounded */
     border-right: 1px solid rgba(255, 255, 255, 0.06);
     display: flex;
     flex-direction: column;
     z-index: 100;
     transition: width var(--transition-normal), transform var(--transition-normal);
-    box-shadow: 4px 0 20px rgba(45, 42, 40, 0.08);
+    box-shadow: 4px 0 20px rgba(42, 42, 42, 0.12);
 }
 
 /* --- Collapsed State --- */
@@ -57,16 +57,16 @@
     gap: 12px;
     font-size: 1.25rem;
     font-weight: 700;
-    color: #F7F6F2; /* Warm white for contrast */
+    color: #F7F3EE; /* Warm linen for contrast */
     white-space: nowrap;
     overflow: hidden;
     letter-spacing: -0.02em;
 }
 
-/* --- Logo Image (ENLARGED) --- */
+/* --- Logo Image (Enlarged) --- */
 .sidebar-logo .logo-image {
-    width: 48px;        /* ← increased from 36px */
-    height: 48px;       /* ← increased from 36px */
+    width: 48px;
+    height: 48px;
     object-fit: contain;
     border-radius: var(--radius-sm);
     flex-shrink: 0;
@@ -84,12 +84,12 @@
 
 .sidebar-logo i {
     font-size: 1.5rem;
-    color: var(--primary); /* Terracotta accent on the icon */
+    color: var(--primary); /* Slate Blue accent */
     display: block;
 }
 
 .sidebar-logo span {
-    color: var(--primary); /* Highlight "Rikim" or key part */
+    color: var(--primary); /* Highlight "Rikim" */
 }
 
 /* When collapsed, hide the logo image and keep only the icon (if any) */
@@ -98,7 +98,7 @@
 }
 
 .sidebar.collapsed .sidebar-logo i {
-    display: block; /* Ensure the icon is visible when collapsed */
+    display: block;
 }
 
 /* --- Toggle Button (Collapse/Expand) --- */
@@ -115,7 +115,7 @@
 
 .sidebar-toggle:hover {
     color: #FFFFFF;
-    background: rgba(212, 132, 90, 0.15);
+    background: rgba(94, 122, 142, 0.20);
     border-color: var(--primary);
 }
 
@@ -138,7 +138,7 @@
     border-radius: 10px;
 }
 .sidebar-nav::-webkit-scrollbar-thumb:hover {
-    background: rgba(212, 132, 90, 0.4);
+    background: rgba(94, 122, 142, 0.5);
 }
 
 /* --- Navigation Sections --- */
@@ -190,16 +190,16 @@
 /* --- Hover State --- */
 .nav-link:hover {
     background: rgba(255, 255, 255, 0.06);
-    color: #F7F6F2;
+    color: #F7F3EE;
 }
 .nav-link:hover i {
     color: var(--primary-light);
 }
 
-/* --- Active State (The "Glowing Terracotta" touch) --- */
+/* --- Active State (Slate Blue glow) --- */
 .nav-link.active {
-    background: rgba(212, 132, 90, 0.12);
-    color: #F7F6F2;
+    background: rgba(94, 122, 142, 0.15);
+    color: #F7F3EE;
     border-left-color: var(--primary);
     font-weight: 600;
 }
@@ -210,12 +210,12 @@
 /* --- Badge inside nav (e.g., notification counts) --- */
 .nav-link .badge {
     margin-left: auto;
-    background: rgba(212, 132, 90, 0.2);
+    background: rgba(94, 122, 142, 0.2);
     color: var(--primary-light);
     font-size: 0.7rem;
     padding: 1px 10px;
     border-radius: var(--radius-full);
-    border: 1px solid rgba(212, 132, 90, 0.1);
+    border: 1px solid rgba(94, 122, 142, 0.15);
 }
 
 /* --- Footer (User Profile & Logout) --- */
@@ -235,22 +235,22 @@
     gap: 12px;
     min-width: 0;
     flex: 1;
-    cursor: pointer;                 /* <-- Makes it clear it's clickable */
+    cursor: pointer;
     transition: opacity var(--transition-fast);
 }
 
 .user-info:hover {
-    opacity: 0.8;                   /* <-- Subtle feedback on hover */
+    opacity: 0.8;
 }
 
 .user-avatar {
-    width: 48px;                    /* ← increased from 38px */
-    height: 48px;                   /* ← increased from 38px */
+    width: 48px;
+    height: 48px;
     border-radius: var(--radius-full);
     object-fit: cover;
     background: rgba(255, 255, 255, 0.08);
     flex-shrink: 0;
-    border: 2px solid rgba(212, 132, 90, 0.2);
+    border: 2px solid rgba(94, 122, 142, 0.25);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -265,7 +265,7 @@
 .user-name {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #F7F6F2;
+    color: #F7F3EE;
     display: block;
     white-space: nowrap;
     overflow: hidden;
@@ -293,8 +293,8 @@
 }
 
 .logout-btn:hover {
-    background: rgba(177, 62, 42, 0.15); /* Danger rust tint */
-    color: #D1624E; /* Danger light */
-    border-color: rgba(177, 62, 42, 0.2);
+    background: rgba(201, 90, 74, 0.15); /* Rust red tint */
+    color: #D97A6A; /* Danger light */
+    border-color: rgba(201, 90, 74, 0.2);
     transform: scale(1.05);
 }
