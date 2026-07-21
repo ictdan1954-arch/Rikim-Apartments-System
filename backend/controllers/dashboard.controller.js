@@ -268,12 +268,12 @@ const dashboardController = {
         }
     },
 
-    // Tenant dashboard (now includes unit_id and apartment_id)
+    // Tenant dashboard (enhanced with deposits, apartment name, announcements, next due date)
     async tenantDashboard(req, res) {
         try {
             const { data: tenant } = await supabase
                 .from('tenants')
-                .select('*, units:unit_id(id, unit_number, monthly_rent, apartment_id)')
+                .select('*, units:unit_id(id, unit_number, monthly_rent, apartment_id, apartments:apartment_id(id, name))')
                 .eq('user_id', req.user.id)
                 .eq('status', 'active')
                 .single();
@@ -282,6 +282,7 @@ const dashboardController = {
                 return ApiResponse.success(res, { message: 'No active tenancy found' });
             }
 
+            // Payment history
             const { data: payments } = await supabase
                 .from('rent_payments')
                 .select('*')
@@ -290,6 +291,7 @@ const dashboardController = {
 
             const totalPaid = payments?.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0) || 0;
 
+            // Calculate arrears
             const leaseStart = new Date(tenant.lease_start_date);
             const now = new Date();
             const monthsDiff = (now.getFullYear() - leaseStart.getFullYear()) * 12 +
@@ -297,10 +299,23 @@ const dashboardController = {
             const expectedRent = monthsDiff * parseFloat(tenant.units?.monthly_rent || 0);
             const arrears = Math.max(0, expectedRent - totalPaid);
 
+            // Next due date (5th of next month)
+            const nextDue = new Date(now.getFullYear(), now.getMonth() + 1, 5);
+            const nextDueFormatted = nextDue.toISOString().split('T')[0];
+
+            // Maintenance requests
             const { data: maintenanceRequests } = await supabase
                 .from('maintenance_requests')
                 .select('*')
                 .eq('reported_by', req.user.id)
+                .order('created_at', { ascending: false })
+                .limit(5);
+
+            // Announcements for the tenant's apartment
+            const { data: announcements } = await supabase
+                .from('announcements')
+                .select('*')
+                .eq('apartment_id', tenant.units?.apartment_id)
                 .order('created_at', { ascending: false })
                 .limit(5);
 
@@ -312,8 +327,13 @@ const dashboardController = {
                     monthly_rent: tenant.units?.monthly_rent,
                     unit_id: tenant.unit_id,
                     apartment_id: tenant.units?.apartment_id,
+                    apartment_name: tenant.units?.apartments?.name,
                     lease_start_date: tenant.lease_start_date,
-                    lease_end_date: tenant.lease_end_date
+                    lease_end_date: tenant.lease_end_date,
+                    deposit_paid: tenant.deposit_paid || 0,
+                    water_deposit: tenant.water_deposit || 0,
+                    electricity_deposit: tenant.electricity_deposit || 0,
+                    next_due_date: nextDueFormatted
                 },
                 payment_summary: {
                     total_paid: totalPaid,
@@ -321,7 +341,8 @@ const dashboardController = {
                     arrears: arrears,
                     recent_payments: payments?.slice(0, 5) || []
                 },
-                maintenance_requests: maintenanceRequests || []
+                maintenance_requests: maintenanceRequests || [],
+                announcements: announcements || []
             });
         } catch (error) {
             return ApiResponse.error(res, 'Failed to load dashboard');
@@ -331,7 +352,6 @@ const dashboardController = {
     // Staff dashboard
     async staffDashboard(req, res) {
         try {
-            // Get user's phone to find their staff record
             const { data: user } = await supabase
                 .from('users')
                 .select('phone')
