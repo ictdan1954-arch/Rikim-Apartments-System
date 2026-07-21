@@ -77,12 +77,12 @@ export default async function loginPage(container) {
                 filter: brightness(0.4);
             }
 
-            /* Replace these URLs with your own images */
+            /* Online stock photos – they load instantly */
             @keyframes slideShow {
-                0%, 30%   { background-image: url('assets/images/bg1.jpg'); }
-                33%, 63%  { background-image: url('assets/images/bg2.jpg'); }
-                66%, 96%  { background-image: url('assets/images/bg3.jpg'); }
-                100%      { background-image: url('assets/images/bg1.jpg'); }
+                0%, 30%   { background-image: url('https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80'); }
+                33%, 63%  { background-image: url('https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80'); }
+                66%, 96%  { background-image: url('https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80'); }
+                100%      { background-image: url('https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1350&q=80'); }
             }
 
             /* Subtle rotating gradient on top of the slideshow for depth */
@@ -145,7 +145,7 @@ export default async function loginPage(container) {
             }
 
             .auth-logo h1 {
-                font-size: clamp(1.3rem, 5vw, 1.6rem);  /* responsive */
+                font-size: clamp(1.3rem, 5vw, 1.6rem);
                 font-weight: 800;
                 color: var(--text-primary);
                 margin-bottom: 4px;
@@ -154,7 +154,7 @@ export default async function loginPage(container) {
 
             .tagline {
                 color: var(--text-secondary);
-                font-size: clamp(0.8rem, 3vw, 0.9rem);  /* responsive */
+                font-size: clamp(0.8rem, 3vw, 0.9rem);
                 font-weight: 500;
             }
 
