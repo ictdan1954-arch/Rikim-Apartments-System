@@ -1,6 +1,6 @@
 import { authService } from '../services/auth.service.js';
 import { apiService } from '../services/api.service.js';
-import { showToast } from '../components/toast.js';  // new import
+import { showToast } from '../components/toast.js';
 import { router } from '../router.js';
 
 export async function setupSidebar() {
@@ -51,14 +51,12 @@ export async function setupSidebar() {
             messagesLink.addEventListener('click', async (e) => {
                 e.preventDefault();
                 try {
-                    // Fetch the tenant's apartment info
                     const dashRes = await apiService.get('/dashboard/tenant');
                     if (!dashRes.success || !dashRes.data.tenant) {
                         showToast('Could not load your apartment info', 'error');
                         return;
                     }
                     const tenant = dashRes.data.tenant;
-                    // Get caretakers for that apartment
                     const caretakerRes = await apiService.get(`/apartments/${tenant.apartment_id}/caretakers`);
                     if (!caretakerRes.success || !caretakerRes.data.length) {
                         showToast('No caretaker assigned to your apartment', 'warning');
@@ -70,7 +68,6 @@ export async function setupSidebar() {
                         const { openChatModal } = await import('./chat.js');
                         openChatModal(authService.user?.id, c.user_id, c.users?.full_name);
                     } else {
-                        // Multiple caretakers – let the tenant choose
                         const { showFormModal } = await import('./modal.js');
                         const formHtml = `
                             <div class="form-group">
@@ -91,6 +88,24 @@ export async function setupSidebar() {
                 }
             });
         }
+    }
+
+    // =============================================
+    // PROFILE MODAL & AVATAR UPDATE (NEW)
+    // =============================================
+    const userInfoEl = document.querySelector('.user-info');
+    if (userInfoEl) {
+        userInfoEl.style.cursor = 'pointer';   // make it feel clickable
+        userInfoEl.addEventListener('click', async () => {
+            const { openProfileModal } = await import('./profile.js');
+            openProfileModal();
+        });
+    }
+
+    // Set avatar if the user has a profile photo
+    const avatar = document.getElementById('user-avatar');
+    if (avatar && authService.user?.profile_photo) {
+        avatar.src = authService.user.profile_photo;
     }
 
     // Highlight active link
@@ -150,7 +165,7 @@ function getMenuItems(role) {
         { section: 'MY STUFF', items: [
             { icon: 'fa-history', text: 'Payment History', href: '/tenants/my' },
             { icon: 'fa-tools', text: 'Maintenance', href: '/maintenance/tenant' },
-            { icon: 'fa-envelope', text: 'Messages', href: '/messages' },  // NEW
+            { icon: 'fa-envelope', text: 'Messages', href: '/messages' },
         ]},
     ];
 
@@ -188,7 +203,6 @@ function renderNav(container, menuItems) {
     });
     container.innerHTML = html;
 
-    // Add click handlers (for mobile close)
     container.querySelectorAll('.nav-link').forEach(link => {
         link.addEventListener('click', (e) => {
             document.getElementById('sidebar').classList.remove('open');
