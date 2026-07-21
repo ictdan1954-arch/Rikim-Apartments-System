@@ -17,7 +17,8 @@ const maintenanceRoutes = require('./routes/maintenance.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const announcementRoutes = require('./routes/announcement.routes');
-const messageRoutes = require('./routes/message.routes'); // NEW
+const messageRoutes = require('./routes/message.routes');
+const uploadRoutes = require('./routes/upload.routes');               // NEW: profile photo upload
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,7 +59,8 @@ app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/announcements', announcementRoutes);
-app.use('/api/messages', messageRoutes); // NEW
+app.use('/api/messages', messageRoutes);
+app.use('/api/upload', uploadRoutes);                                // NEW
 
 // =============================================
 // 404 HANDLER
