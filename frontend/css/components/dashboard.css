@@ -1,6 +1,6 @@
 /* =============================================
-   DASHBOARD - ESTATE CALM
-   Warm, scannable, and inviting at a glance.
+   DASHBOARD - RIKIM APARTMENTS MODERN HERITAGE
+   Clean, scannable, and warmly inviting.
    ============================================= */
 
 /* ----- Stats Overview Grid ----- */
@@ -48,12 +48,12 @@
 
 /* ----- Tenant Welcome Card (Premium Concierge Feel) ----- */
 .tenant-info-card {
-    background: linear-gradient(145deg, #D4845A 0%, #B13E2A 100%);
+    background: linear-gradient(145deg, #5E7A8E 0%, #A84A3A 100%);
     color: #FFFFFF;
     border-radius: var(--radius-lg);
     padding: 32px 28px;
     margin-bottom: 28px;
-    box-shadow: 0 8px 24px rgba(177, 62, 42, 0.25);
+    box-shadow: 0 8px 24px rgba(94, 122, 142, 0.30);
     position: relative;
     overflow: hidden;
 }
@@ -103,14 +103,14 @@
 
 /* ----- Arrears / Overdue Alert (Warm & Urgent, not harsh) ----- */
 .arrears-alert {
-    background: #F9EDE9; /* Warm peach/danger background */
+    background: var(--danger-bg);
     border-left: 5px solid var(--danger);
     border-radius: var(--radius-md);
     padding: 16px 22px;
     display: flex;
     align-items: center;
     gap: 14px;
-    color: #8A3324; /* Deep rust text for readability */
+    color: #7A3A2A;
     font-weight: 500;
     box-shadow: var(--shadow-sm);
     margin-bottom: 24px;
@@ -124,7 +124,7 @@
 
 .arrears-alert strong {
     font-weight: 700;
-    color: #6B271B;
+    color: #5A2A1A;
 }
 
 /* ----- Quick Actions Grid (Elevated Tiles) ----- */
