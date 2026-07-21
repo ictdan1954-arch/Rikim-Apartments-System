@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'https://rikim-apartment-system.onrender.com/api';
+const API_BASE_URL = 'https://rikim-apartments-system.onrender.com/api';
 
 export const CONFIG = {
     API_URL: API_BASE_URL,
