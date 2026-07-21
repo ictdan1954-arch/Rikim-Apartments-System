@@ -34,14 +34,13 @@ const rentController = {
                     reference_number: reference_number || null,
                     recorded_by: req.user.id,
                     notes: notes || null,
-                    purpose: purpose || 'monthly_rent'   // default
+                    purpose: purpose || 'monthly_rent'
                 }])
                 .select('*')
                 .single();
 
             if (error) throw error;
 
-            // Create notification
             await supabase.from('notifications').insert([{
                 user_id: req.user.id,
                 title: 'Rent Payment Recorded',
@@ -70,11 +69,9 @@ const rentController = {
                     units:unit_id(id, unit_number)
                 `);
 
-            // Handle 'all' – show all apartments for landlord, restrict for caretaker
             if (apartmentId !== 'all') {
                 query = query.eq('apartment_id', apartmentId);
             } else {
-                // If caretaker, restrict to assigned apartments
                 if (req.user.role === 'caretaker') {
                     const { data: assignments } = await supabase
                         .from('caretaker_assignments')
@@ -87,7 +84,6 @@ const rentController = {
                     }
                     query = query.in('apartment_id', apartmentIds);
                 }
-                // Landlord sees all
             }
 
             if (start_date) query = query.gte('payment_date', start_date);
@@ -171,6 +167,112 @@ const rentController = {
             });
         } catch (error) {
             return ApiResponse.error(res, 'Failed to calculate arrears');
+        }
+    },
+
+    // Get payment status summary for an apartment (or all)
+    async getPaymentStatus(req, res) {
+        try {
+            const { apartmentId } = req.params;
+            const now = new Date();
+            const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+
+            let query = supabase
+                .from('tenants')
+                .select(`
+                    id, full_name, phone, lease_start_date,
+                    units:unit_id(id, unit_number, monthly_rent, apartment_id,
+                        apartments:apartment_id(id, name))
+                `)
+                .eq('status', 'active');
+
+            if (apartmentId !== 'all') {
+                const { data: unitIds } = await supabase
+                    .from('units')
+                    .select('id')
+                    .eq('apartment_id', apartmentId);
+                const ids = unitIds?.map(u => u.id) || [];
+                if (ids.length === 0) {
+                    return ApiResponse.success(res, { total_tenants: 0, paid_tenants: 0, unpaid_tenants: 0, unpaid_list: [] });
+                }
+                query = query.in('unit_id', ids);
+            } else if (req.user.role === 'caretaker') {
+                const { data: assignments } = await supabase
+                    .from('caretaker_assignments')
+                    .select('apartment_id')
+                    .eq('user_id', req.user.id)
+                    .eq('is_active', true);
+                const aptIds = assignments?.map(a => a.apartment_id) || [];
+                if (aptIds.length === 0) {
+                    return ApiResponse.success(res, { total_tenants: 0, paid_tenants: 0, unpaid_tenants: 0, unpaid_list: [] });
+                }
+                const { data: unitIds } = await supabase
+                    .from('units')
+                    .select('id')
+                    .in('apartment_id', aptIds);
+                const ids = unitIds?.map(u => u.id) || [];
+                query = query.in('unit_id', ids);
+            }
+
+            const { data: tenants } = await query;
+
+            if (!tenants || tenants.length === 0) {
+                return ApiResponse.success(res, { total_tenants: 0, paid_tenants: 0, unpaid_tenants: 0, unpaid_list: [] });
+            }
+
+            const paidList = [];
+            const unpaidList = [];
+
+            for (const tenant of tenants) {
+                const { data: payments } = await supabase
+                    .from('rent_payments')
+                    .select('amount_paid')
+                    .eq('tenant_id', tenant.id)
+                    .gte('payment_date', firstOfMonth);
+
+                const hasPaid = payments && payments.length > 0;
+
+                // Calculate arrears
+                const { data: allPayments } = await supabase
+                    .from('rent_payments')
+                    .select('amount_paid')
+                    .eq('tenant_id', tenant.id);
+                const totalPaid = allPayments?.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0) || 0;
+                const leaseStart = new Date(tenant.lease_start_date || now);
+                const monthsDiff = (now.getFullYear() - leaseStart.getFullYear()) * 12 +
+                    (now.getMonth() - leaseStart.getMonth()) + 1;
+                const expectedRent = monthsDiff * parseFloat(tenant.units?.monthly_rent || 0);
+                const arrears = Math.max(0, expectedRent - totalPaid);
+
+                const tenantInfo = {
+                    id: tenant.id,
+                    full_name: tenant.full_name,
+                    phone: tenant.phone,
+                    unit_number: tenant.units?.unit_number,
+                    unit_id: tenant.units?.id,
+                    apartment_name: tenant.units?.apartments?.name,
+                    apartment_id: tenant.units?.apartment_id,
+                    monthly_rent: tenant.units?.monthly_rent,
+                    arrears: arrears
+                };
+
+                if (hasPaid) {
+                    paidList.push(tenantInfo);
+                } else {
+                    unpaidList.push(tenantInfo);
+                }
+            }
+
+            return ApiResponse.success(res, {
+                total_tenants: tenants.length,
+                paid_tenants: paidList.length,
+                unpaid_tenants: unpaidList.length,
+                unpaid_list: unpaidList,
+                paid_list: paidList
+            });
+        } catch (error) {
+            console.error('Payment status error:', error);
+            return ApiResponse.error(res, 'Failed to fetch payment status');
         }
     },
 
