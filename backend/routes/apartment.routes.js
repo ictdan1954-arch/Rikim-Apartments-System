@@ -11,7 +11,7 @@ router.post('/', authorize('landlord'), apartmentController.create);
 router.put('/:id', authorize('landlord'), apartmentController.update);
 router.delete('/:id', authorize('landlord'), apartmentController.delete);
 router.post('/:apartmentId/caretakers', authorize('landlord'), apartmentController.assignCaretaker);
-router.get('/:apartmentId/caretakers', authorize('landlord', 'caretaker'), apartmentController.getCaretakers);
+router.get('/:apartmentId/caretakers', authorize('landlord', 'caretaker', 'tenant'), apartmentController.getCaretakers);
 router.delete('/caretakers/:assignmentId', authorize('landlord'), apartmentController.removeCaretaker);
 
 // All authenticated users
