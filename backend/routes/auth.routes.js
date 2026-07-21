@@ -28,6 +28,7 @@ router.post('/setup', async (req, res) => {
 
 // Protected routes
 router.get('/profile', authenticate, authController.getProfile);
+router.put('/profile', authenticate, authController.updateProfile);           // NEW: self‑service profile update
 router.get('/users', authenticate, authorize('landlord'), authController.getAllUsers);
 router.put('/users/:userId', authenticate, authorize('landlord', 'caretaker'), authController.updateUser);
 
