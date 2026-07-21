@@ -276,19 +276,25 @@ const tenantController = {
 
             if (error) throw error;
 
-            // If tenant moved out, update unit status (if not already handled by unit change)
+            // If tenant moved out, update unit status AND delete user account
             if (req.body.status === 'moved_out') {
                 const { data: tenantData } = await supabase
                     .from('tenants')
-                    .select('unit_id')
+                    .select('user_id, unit_id')
                     .eq('id', id)
                     .single();
 
                 if (tenantData) {
+                    // Free the unit
                     await supabase
                         .from('units')
                         .update({ status: 'vacant' })
                         .eq('id', tenantData.unit_id);
+
+                    // Delete the linked user account
+                    if (tenantData.user_id) {
+                        await supabase.from('users').delete().eq('id', tenantData.user_id);
+                    }
                 }
             }
 
