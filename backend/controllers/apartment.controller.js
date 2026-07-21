@@ -94,7 +94,7 @@ const apartmentController = {
         }
     },
 
-    // Get single apartment
+    // Get single apartment – now includes unit‑type breakdown
     async getById(req, res) {
         try {
             const { id } = req.params;
@@ -109,23 +109,49 @@ const apartmentController = {
                 return ApiResponse.notFound(res, 'Apartment not found');
             }
 
-            // Get unit count
-            const { count: unitCount } = await supabase
+            // Fetch all units for this apartment
+            const { data: units, error: unitsError } = await supabase
                 .from('units')
-                .select('*', { count: 'exact', head: true })
+                .select('unit_type, status')
                 .eq('apartment_id', id);
 
-            // Get tenant count
+            if (unitsError) throw unitsError;
+
+            // Total unit count
+            const unitCount = units.length;
+            // Occupied count
+            const occupiedCount = units.filter(u => u.status === 'occupied').length;
+
+            // Build breakdown by unit_type
+            const breakdownMap = {};
+            units.forEach(u => {
+                const type = u.unit_type;
+                if (!breakdownMap[type]) {
+                    breakdownMap[type] = { total: 0, occupied: 0 };
+                }
+                breakdownMap[type].total++;
+                if (u.status === 'occupied') breakdownMap[type].occupied++;
+            });
+
+            const unitsBreakdown = Object.keys(breakdownMap).map(type => ({
+                unit_type: type,
+                total: breakdownMap[type].total,
+                occupied: breakdownMap[type].occupied,
+                vacant: breakdownMap[type].total - breakdownMap[type].occupied
+            }));
+
+            // Active tenants count
             const { count: tenantCount } = await supabase
                 .from('tenants')
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'active')
-                .in('unit_id', (await supabase.from('units').select('id').eq('apartment_id', id)).data?.map(u => u.id) || []);
+                .in('unit_id', units.map(u => u.id));
 
             return ApiResponse.success(res, {
                 ...apartment,
                 unit_count: unitCount || 0,
-                tenant_count: tenantCount || 0
+                tenant_count: tenantCount || 0,
+                units_breakdown: unitsBreakdown
             });
         } catch (error) {
             return ApiResponse.error(res, 'Failed to fetch apartment');
