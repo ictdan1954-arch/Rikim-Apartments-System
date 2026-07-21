@@ -4,6 +4,18 @@ import { showToast } from '../components/toast.js';
 import { router } from '../router.js';
 
 export async function setupSidebar() {
+    // -------------------------------------------------------
+    // If user is NOT logged in, keep the sidebar hidden (CSS default)
+    // and stop any further setup.
+    // -------------------------------------------------------
+    if (!authService.isAuthenticated()) {
+        return;
+    }
+
+    // User is authenticated – make the sidebar visible
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.style.display = 'flex';
+
     const nav = document.getElementById('sidebar-nav');
     const role = authService.getRole();
 
@@ -35,7 +47,7 @@ export async function setupSidebar() {
 
                 nav.querySelectorAll('.nav-link').forEach(link => {
                     link.addEventListener('click', () => {
-                        document.getElementById('sidebar').classList.remove('open');
+                        sidebar.classList.remove('open');
                     });
                 });
             }
@@ -91,11 +103,11 @@ export async function setupSidebar() {
     }
 
     // =============================================
-    // PROFILE MODAL & AVATAR UPDATE (NEW)
+    // PROFILE MODAL & AVATAR UPDATE
     // =============================================
     const userInfoEl = document.querySelector('.user-info');
     if (userInfoEl) {
-        userInfoEl.style.cursor = 'pointer';   // make it feel clickable
+        userInfoEl.style.cursor = 'pointer';
         userInfoEl.addEventListener('click', async () => {
             const { openProfileModal } = await import('./profile.js');
             openProfileModal();
