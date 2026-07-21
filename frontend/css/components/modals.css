@@ -1,5 +1,5 @@
 /* =============================================
-   MODALS - ESTATE CALM
+   MODALS - RIKIM APARTMENTS MODERN HERITAGE
    Smooth, secure, and elegantly focused.
    ============================================= */
 
@@ -10,7 +10,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(45, 42, 40, 0.60); /* Warm charcoal tint instead of harsh black */
+    background: rgba(42, 42, 42, 0.60); /* Deep slate tint instead of harsh black */
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     display: flex;
