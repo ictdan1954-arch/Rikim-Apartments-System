@@ -3,6 +3,7 @@ import { authService } from '../../services/auth.service.js';
 import { formatCurrency, formatDate, capitalize } from '../../utils/formatters.js';
 import { router } from '../../router.js';
 import { showToast } from '../../components/toast.js';
+import { openChatModal } from '../../components/chat.js';
 
 export default async function tenantDetails(container, params) {
     const id = params.id === 'my' ? null : params.id;
@@ -75,6 +76,9 @@ export default async function tenantDetails(container, params) {
                     ${id ? `
                     <button class="btn btn-outline" id="show-credentials-btn">
                         <i class="fas fa-key"></i> Show Credentials
+                    </button>
+                    <button class="btn btn-outline" id="msg-tenant-btn">
+                        <i class="fas fa-envelope"></i> Message
                     </button>` : ''}
                 </div>` : ''}
             </div>
@@ -112,6 +116,10 @@ export default async function tenantDetails(container, params) {
             document.getElementById('move-out-btn').addEventListener('click', () => openMoveOutModal(tenant));
             if (id) {
                 document.getElementById('show-credentials-btn').addEventListener('click', () => showCredentialsModal(tenant));
+                // Message button
+                document.getElementById('msg-tenant-btn').addEventListener('click', () => {
+                    openChatModal(authService.user?.id, tenant.user_id, tenant.full_name);
+                });
             }
         }
 
