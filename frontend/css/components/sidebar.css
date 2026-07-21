@@ -63,10 +63,10 @@
     letter-spacing: -0.02em;
 }
 
-/* --- Logo Image (New!) --- */
+/* --- Logo Image (ENLARGED) --- */
 .sidebar-logo .logo-image {
-    width: 36px;
-    height: 36px;
+    width: 48px;        /* ← increased from 36px */
+    height: 48px;       /* ← increased from 36px */
     object-fit: contain;
     border-radius: var(--radius-sm);
     flex-shrink: 0;
@@ -89,7 +89,7 @@
 }
 
 .sidebar-logo span {
-    color: var(--primary); /* Highlight "Bandaptai" or key part */
+    color: var(--primary); /* Highlight "Rikim" or key part */
 }
 
 /* When collapsed, hide the logo image and keep only the icon (if any) */
@@ -244,8 +244,8 @@
 }
 
 .user-avatar {
-    width: 38px;
-    height: 38px;
+    width: 48px;                    /* ← increased from 38px */
+    height: 48px;                   /* ← increased from 38px */
     border-radius: var(--radius-full);
     object-fit: cover;
     background: rgba(255, 255, 255, 0.08);
