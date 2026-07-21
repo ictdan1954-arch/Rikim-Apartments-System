@@ -139,7 +139,7 @@ body.dashboard-page .top-navbar {
 
 /* ----- 2. LOGIN PAGE (Full immersive splash) ----- */
 body.login-page {
-    background-image: url('../assets/images/login-splash.jpg');
+    background-image: url('../assets/images/login-splash01.jpg');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
