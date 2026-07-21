@@ -13,7 +13,7 @@ export default async function loginPage(container) {
                     <div class="logo-icon" style="display:none;">
                         <i class="fas fa-building"></i>
                     </div>
-                    <h1>Bandaptai Apartments</h1>
+                    <h1>Rikim Apartments</h1>
                     <p class="tagline">Management System</p>
                 </div>
                 <form id="login-form" class="auth-form">
