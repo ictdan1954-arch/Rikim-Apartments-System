@@ -29,12 +29,119 @@ const messageController = {
                 title: 'New Message',
                 message: `${req.user.role} sent you a message: "${message.trim().substring(0, 50)}..."`,
                 type: 'general',
-                link: `/messages?partner=${req.user.id}`   // <-- link added
+                link: `/messages?partner=${req.user.id}`
             }]);
 
             return ApiResponse.created(res, data, 'Message sent');
         } catch (error) {
             return ApiResponse.error(res, 'Failed to send message');
+        }
+    },
+
+    // Broadcast a message to multiple receivers (landlord → caretakers, caretaker → tenants)
+    async broadcast(req, res) {
+        try {
+            const { role, apartment_id, message } = req.body;
+            if (!role || !message || !message.trim()) {
+                return ApiResponse.badRequest(res, 'Role and message are required');
+            }
+
+            let receivers = [];
+
+            if (req.user.role === 'landlord') {
+                if (role === 'caretaker') {
+                    // Get all caretakers (optionally filtered by apartment)
+                    let query = supabase.from('users').select('id, full_name').eq('role', 'caretaker').eq('is_active', true);
+                    if (apartment_id) {
+                        const { data: assignments } = await supabase
+                            .from('caretaker_assignments')
+                            .select('user_id')
+                            .eq('apartment_id', apartment_id)
+                            .eq('is_active', true);
+                        const ids = assignments?.map(a => a.user_id) || [];
+                        if (ids.length === 0) {
+                            return ApiResponse.badRequest(res, 'No caretakers found for this apartment');
+                        }
+                        query = query.in('id', ids);
+                    }
+                    const { data: users } = await query;
+                    receivers = users || [];
+                } else {
+                    return ApiResponse.badRequest(res, 'Landlord can only broadcast to caretakers');
+                }
+            } else if (req.user.role === 'caretaker') {
+                if (role !== 'tenant') {
+                    return ApiResponse.badRequest(res, 'Caretaker can only broadcast to tenants');
+                }
+                // Get the caretaker's assigned apartment(s)
+                const { data: assignments } = await supabase
+                    .from('caretaker_assignments')
+                    .select('apartment_id')
+                    .eq('user_id', req.user.id)
+                    .eq('is_active', true);
+                const aptIds = assignments?.map(a => a.apartment_id) || [];
+                if (aptIds.length === 0) {
+                    return ApiResponse.badRequest(res, 'No apartment assigned');
+                }
+                // Use the provided apartment_id or the first assigned
+                const targetAptId = apartment_id || aptIds[0];
+                if (!aptIds.includes(targetAptId)) {
+                    return ApiResponse.forbidden(res, 'You can only message tenants in your assigned apartment');
+                }
+                // Get all active tenants in that apartment
+                const { data: units } = await supabase
+                    .from('units')
+                    .select('id')
+                    .eq('apartment_id', targetAptId);
+                const unitIds = units?.map(u => u.id) || [];
+                if (unitIds.length === 0) {
+                    return ApiResponse.badRequest(res, 'No units found');
+                }
+                const { data: tenants } = await supabase
+                    .from('tenants')
+                    .select('user_id, full_name')
+                    .eq('status', 'active')
+                    .in('unit_id', unitIds);
+                // Extract user IDs
+                const userIds = tenants?.map(t => t.user_id).filter(Boolean) || [];
+                if (userIds.length === 0) {
+                    return ApiResponse.badRequest(res, 'No active tenants found');
+                }
+                receivers = userIds.map(id => ({ id, full_name: '' }));
+            } else {
+                return ApiResponse.forbidden(res, 'Broadcast not allowed for this role');
+            }
+
+            if (receivers.length === 0) {
+                return ApiResponse.badRequest(res, 'No receivers found');
+            }
+
+            // Create a message for each receiver
+            const messagesToInsert = receivers.map(r => ({
+                sender_id: req.user.id,
+                receiver_id: r.id,
+                apartment_id: apartment_id || null,
+                message: message.trim()
+            }));
+
+            const { error } = await supabase.from('messages').insert(messagesToInsert);
+
+            if (error) throw error;
+
+            // Send notifications to all receivers
+            const notifications = receivers.map(r => ({
+                user_id: r.id,
+                title: `Broadcast from ${req.user.role}`,
+                message: message.trim().substring(0, 100),
+                type: 'general',
+                link: `/messages?partner=${req.user.id}`
+            }));
+            await supabase.from('notifications').insert(notifications);
+
+            return ApiResponse.created(res, { count: receivers.length }, `Message sent to ${receivers.length} ${role}(s)`);
+        } catch (error) {
+            console.error('Broadcast error:', error);
+            return ApiResponse.error(res, 'Failed to broadcast message');
         }
     },
 
