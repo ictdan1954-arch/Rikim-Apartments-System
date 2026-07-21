@@ -192,7 +192,7 @@ const authController = {
         }
     },
 
-    // Update user (Landlord full access, Caretaker only staff in their apartment)
+    // Update user (Landlord full access, Caretaker only staff/tenants in their apartment)
     async updateUser(req, res) {
         try {
             const { userId } = req.params;
@@ -215,32 +215,62 @@ const authController = {
                 if (targetUser.id === req.user.id) {
                     return ApiResponse.forbidden(res, 'You cannot edit your own account');
                 }
-                // 2. Cannot edit tenants
+
+                // 2. If the target is a tenant, check that they live in one of the caretaker's apartments
                 if (targetUser.role === 'tenant') {
-                    return ApiResponse.forbidden(res, 'You cannot edit tenant accounts');
+                    // Find the tenant's apartment through their unit
+                    const { data: tenantData } = await supabase
+                        .from('tenants')
+                        .select('unit_id, units!inner(apartment_id)')
+                        .eq('user_id', userId)
+                        .maybeSingle();
+
+                    if (!tenantData) {
+                        return ApiResponse.forbidden(res, 'Tenant record not found');
+                    }
+
+                    const apartmentId = tenantData.units?.apartment_id;
+                    if (!apartmentId) {
+                        return ApiResponse.forbidden(res, 'Tenant does not have an apartment');
+                    }
+
+                    // Check if the caretaker is assigned to that apartment
+                    const { data: assignment } = await supabase
+                        .from('caretaker_assignments')
+                        .select('id')
+                        .eq('user_id', req.user.id)
+                        .eq('apartment_id', apartmentId)
+                        .eq('is_active', true)
+                        .maybeSingle();
+
+                    if (!assignment) {
+                        return ApiResponse.forbidden(res, 'You can only edit tenants from your assigned apartment');
+                    }
                 }
 
-                // 3. Verify the user is linked to a staff member in one of the caretaker's apartments
-                const { data: staff } = await supabase
-                    .from('staff_members')
-                    .select('apartment_id')
-                    .eq('phone', targetUser.phone)
-                    .maybeSingle();
+                // 3. If the target is a staff member (not tenant), verify they work in the caretaker's apartment
+                if (targetUser.role !== 'tenant') {
+                    const { data: staff } = await supabase
+                        .from('staff_members')
+                        .select('apartment_id')
+                        .eq('phone', targetUser.phone)
+                        .maybeSingle();
 
-                if (!staff) {
-                    return ApiResponse.forbidden(res, 'You can only edit users linked to your apartment staff');
-                }
+                    if (!staff) {
+                        return ApiResponse.forbidden(res, 'You can only edit users linked to your apartment staff');
+                    }
 
-                const { data: assignment } = await supabase
-                    .from('caretaker_assignments')
-                    .select('id')
-                    .eq('user_id', req.user.id)
-                    .eq('apartment_id', staff.apartment_id)
-                    .eq('is_active', true)
-                    .maybeSingle();
+                    const { data: assignment } = await supabase
+                        .from('caretaker_assignments')
+                        .select('id')
+                        .eq('user_id', req.user.id)
+                        .eq('apartment_id', staff.apartment_id)
+                        .eq('is_active', true)
+                        .maybeSingle();
 
-                if (!assignment) {
-                    return ApiResponse.forbidden(res, 'You can only edit staff from your assigned apartment');
+                    if (!assignment) {
+                        return ApiResponse.forbidden(res, 'You can only edit staff from your assigned apartment');
+                    }
                 }
             }
 
@@ -297,7 +327,7 @@ const authController = {
     },
 
     // ====================================================
-    // NEW: Update own profile (any authenticated user)
+    // Update own profile (any authenticated user)
     // ====================================================
     async updateProfile(req, res) {
         try {
