@@ -1,6 +1,7 @@
 import { apiService } from '../../services/api.service.js';
 import { authService } from '../../services/auth.service.js';
-import { formatCurrency, formatDate } from '../../utils/formatters.js';
+import { formatCurrency, formatDate, capitalize } from '../../utils/formatters.js';
+import { showToast } from '../../components/toast.js';
 import { router } from '../../router.js';
 import { renderStaffDashboard } from './staff.js';
 
@@ -297,12 +298,34 @@ function renderTenantDashboard(container, data) {
 
     const t = data.tenant;
     const p = data.payment_summary;
-    
+    const maintenanceList = data.maintenance_requests || [];
+    const announcements = data.announcements || [];
+
+    const totalDeposits = parseFloat(t.deposit_paid || 0) + parseFloat(t.water_deposit || 0) + parseFloat(t.electricity_deposit || 0);
+
     container.innerHTML = `
         <div class="tenant-dashboard">
+            <!-- Welcome Card -->
             <div class="tenant-info-card">
                 <div class="tenant-name">Welcome, ${t.full_name}</div>
-                <div class="unit-badge">${t.unit_number} - ${formatCurrency(t.monthly_rent)}/month</div>
+                <div class="unit-badge">${t.unit_number} – ${t.apartment_name || ''}</div>
+                <div class="mt-2" style="display:flex; gap:20px; flex-wrap:wrap;">
+                    <div><i class="fas fa-money-bill-wave"></i> Rent: <strong>${formatCurrency(t.monthly_rent)}/month</strong></div>
+                    <div><i class="fas fa-calendar-alt"></i> Next Due: <strong>${formatDate(t.next_due_date)}</strong></div>
+                    <div><i class="fas fa-coins"></i> Total Deposits: <strong>${formatCurrency(totalDeposits)}</strong></div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions mb-2">
+                <button class="quick-action-btn" id="msg-caretaker-btn">
+                    <i class="fas fa-envelope"></i>
+                    <span>Message Caretaker</span>
+                </button>
+                <button class="quick-action-btn" onclick="window.router.navigate('/maintenance/tenant')">
+                    <i class="fas fa-tools"></i>
+                    <span>Report Issue</span>
+                </button>
             </div>
 
             ${p.arrears > 0 ? `
@@ -312,6 +335,7 @@ function renderTenantDashboard(container, data) {
             </div>` : ''}
 
             <div class="dashboard-grid">
+                <!-- Payment Summary Card -->
                 <div class="card">
                     <div class="card-header"><h3 class="card-title">Payment Summary</h3></div>
                     <div class="dashboard-stats" style="grid-template-columns: repeat(2,1fr);">
@@ -332,8 +356,26 @@ function renderTenantDashboard(container, data) {
                             </div>
                         </div>
                     </div>
+
+                    <!-- Deposits Breakdown -->
+                    <h4 class="mt-3" style="font-size:0.9rem;">Deposits</h4>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+                        <div class="stat-card" style="flex-direction:column; align-items:flex-start; padding:12px;">
+                            <div class="stat-label">General</div>
+                            <div class="stat-value" style="font-size:1rem;">${formatCurrency(t.deposit_paid || 0)}</div>
+                        </div>
+                        <div class="stat-card" style="flex-direction:column; align-items:flex-start; padding:12px;">
+                            <div class="stat-label">Water</div>
+                            <div class="stat-value" style="font-size:1rem;">${formatCurrency(t.water_deposit || 0)}</div>
+                        </div>
+                        <div class="stat-card" style="flex-direction:column; align-items:flex-start; padding:12px;">
+                            <div class="stat-label">Electricity</div>
+                            <div class="stat-value" style="font-size:1rem;">${formatCurrency(t.electricity_deposit || 0)}</div>
+                        </div>
+                    </div>
+
                     ${p.recent_payments?.length ? `
-                    <h4 style="margin-top:20px; font-size:0.9rem;">Recent Payments</h4>
+                    <h4 class="mt-3" style="font-size:0.9rem;">Recent Payments</h4>
                     <div class="table-container" style="margin-top:8px;">
                         <table class="table">
                             <thead><tr><th>Date</th><th>Amount</th><th>Method</th></tr></thead>
@@ -342,28 +384,86 @@ function renderTenantDashboard(container, data) {
                                 <tr>
                                     <td>${formatDate(pmt.payment_date)}</td>
                                     <td>${formatCurrency(pmt.amount_paid)}</td>
-                                    <td>${pmt.payment_method}</td>
+                                    <td>${capitalize(pmt.payment_method)}</td>
                                 </tr>`).join('')}
                             </tbody>
                         </table>
                     </div>` : '<p class="text-muted mt-2">No payments recorded yet.</p>'}
                 </div>
-                <div class="card">
-                    <div class="card-header"><h3 class="card-title">My Maintenance Requests</h3></div>
-                    ${data.maintenance_requests?.length ? 
-                        data.maintenance_requests.slice(0,5).map(r => `
-                        <div class="info-card mb-1">
-                            <div class="info-card-icon"><i class="fas fa-tools"></i></div>
-                            <div class="info-card-content">
-                                <h4>${r.title}</h4>
-                                <p><span class="badge badge-${r.status === 'resolved' ? 'success' : r.status === 'in_progress' ? 'info' : 'warning'}">${r.status}</span></p>
-                            </div>
-                        </div>`).join('') 
-                        : '<p class="text-muted">No maintenance requests.</p>'
-                    }
-                    <button class="btn btn-primary btn-sm mt-2" onclick="window.router.navigate('/maintenance/tenant')">View All</button>
+
+                <!-- Right Column: Maintenance + Announcements -->
+                <div style="display:flex; flex-direction:column; gap:20px;">
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">My Maintenance Requests</h3></div>
+                        ${maintenanceList.length ? 
+                            maintenanceList.slice(0,5).map(r => `
+                            <div class="info-card mb-1">
+                                <div class="info-card-icon"><i class="fas fa-tools"></i></div>
+                                <div class="info-card-content">
+                                    <h4>${r.title}</h4>
+                                    <p><span class="badge badge-${r.status === 'resolved' ? 'success' : r.status === 'in_progress' ? 'info' : 'warning'}">${r.status}</span></p>
+                                </div>
+                            </div>`).join('') 
+                            : '<p class="text-muted">No maintenance requests.</p>'
+                        }
+                        <button class="btn btn-primary btn-sm mt-2" onclick="window.router.navigate('/maintenance/tenant')">View All</button>
+                    </div>
+
+                    <!-- Announcements -->
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">Announcements</h3></div>
+                        ${announcements.length > 0 ?
+                            announcements.map(a => `
+                            <div class="info-card mb-1">
+                                <div class="info-card-icon"><i class="fas fa-bullhorn"></i></div>
+                                <div class="info-card-content">
+                                    <h4>${a.title}</h4>
+                                    <p>${a.message || ''}</p>
+                                    <small class="text-muted">${formatDate(a.created_at)}</small>
+                                </div>
+                            </div>`).join('')
+                            : '<p class="text-muted p-2">No announcements.</p>'
+                        }
+                    </div>
                 </div>
             </div>
         </div>
     `;
+
+    // Message caretaker button handler
+    const msgBtn = document.getElementById('msg-caretaker-btn');
+    if (msgBtn) {
+        msgBtn.addEventListener('click', async () => {
+            try {
+                const res = await apiService.get(`/apartments/${t.apartment_id}/caretakers`);
+                if (!res.success || !res.data.length) {
+                    showToast('No caretaker assigned to your apartment', 'warning');
+                    return;
+                }
+                const caretakers = res.data;
+                if (caretakers.length === 1) {
+                    const c = caretakers[0];
+                    const { openChatModal } = await import('../../components/chat.js');
+                    openChatModal(authService.user?.id, c.user_id, c.users?.full_name);
+                } else {
+                    const { showFormModal } = await import('../../components/modal.js');
+                    const formHtml = `
+                        <div class="form-group">
+                            <label class="form-label">Select Caretaker</label>
+                            <select class="form-select" id="caretaker-select">
+                                ${caretakers.map(c => `<option value="${c.user_id}">${c.users?.full_name}</option>`).join('')}
+                            </select>
+                        </div>`;
+                    showFormModal('Message Caretaker', formHtml, async (overlay) => {
+                        const selectedId = overlay.querySelector('#caretaker-select').value;
+                        const selectedName = caretakers.find(c => c.user_id === selectedId)?.users?.full_name;
+                        const { openChatModal } = await import('../../components/chat.js');
+                        openChatModal(authService.user?.id, selectedId, selectedName);
+                    });
+                }
+            } catch (e) {
+                showToast('Could not load caretakers', 'error');
+            }
+        });
+    }
 }
