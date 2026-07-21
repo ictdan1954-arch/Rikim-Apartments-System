@@ -1,5 +1,5 @@
 // =============================================
-// BANDAPTAI APARTMENTS - MAIN SERVER
+// RIKIM APARTMENTS - MAIN SERVER
 // =============================================
 require('dotenv').config();
 const express = require('express');
@@ -39,7 +39,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
     res.json({
         success: true,
-        message: 'Bandaptai Apartments API is running',
+        message: 'Rikim Apartments API is running',
         version: '1.0.0',
         timestamp: new Date().toISOString()
     });
@@ -88,7 +88,7 @@ app.use((err, req, res, next) => {
 // START SERVER
 // =============================================
 app.listen(PORT, () => {
-    console.log(`🏢 Bandaptai Apartments API running on port ${PORT}`);
+    console.log(`🏢 Rikim Apartments API running on port ${PORT}`);
     console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
