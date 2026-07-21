@@ -1,6 +1,6 @@
 import { apiService } from '../../services/api.service.js';
 import { authService } from '../../services/auth.service.js';
-import { formatDate, formatCurrency } from '../../utils/formatters.js';
+import { formatDate, formatCurrency, capitalize } from '../../utils/formatters.js';
 import { showToast } from '../../components/toast.js';
 import { router } from '../../router.js';
 import { openChatModal } from '../../components/chat.js';
@@ -68,6 +68,30 @@ export default async function apartmentDetails(container, params) {
                 </button>
             </div>
 
+            <!-- ========== UNITS BY TYPE BREAKDOWN (NEW) ========== -->
+            ${a.units_breakdown && a.units_breakdown.length > 0 ? `
+            <div class="card mb-2">
+                <div class="card-header"><h3 class="card-title">Units by Type</h3></div>
+                <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                    ${a.units_breakdown.map(b => {
+                        const occupancyPercent = b.total ? Math.round((b.occupied / b.total) * 100) : 0;
+                        const barColor = occupancyPercent >= 80 ? 'var(--secondary)' : occupancyPercent >= 40 ? 'var(--warning)' : 'var(--danger)';
+                        return `
+                        <div class="stat-card" style="flex-direction:column; align-items:flex-start; min-width:180px;">
+                            <div class="stat-label" style="font-weight:700;">${capitalize(b.unit_type)}</div>
+                            <div style="display:flex; justify-content:space-between; width:100%; margin-top:4px;">
+                                <span>${b.occupied}/${b.total} occupied</span>
+                                <span>${b.vacant} vacant</span>
+                            </div>
+                            <div style="width:100%; background:var(--border); height:6px; border-radius:3px; margin-top:4px;">
+                                <div style="width:${occupancyPercent}%; background:${barColor}; height:100%; border-radius:3px;"></div>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>` : ''}
+            <!-- =================================================== -->
+
             <!-- Caretaker Management (Landlord only) -->
             ${userRole === 'landlord' ? `
             <div class="card">
@@ -99,7 +123,7 @@ export default async function apartmentDetails(container, params) {
 }
 
 // =============================================
-// CARETAKER FUNCTIONS
+// CARETAKER FUNCTIONS (unchanged)
 // =============================================
 async function loadCaretakers(apartmentId) {
     try {
