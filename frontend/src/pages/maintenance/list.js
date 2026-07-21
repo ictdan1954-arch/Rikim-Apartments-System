@@ -26,9 +26,10 @@ export default async function maintenanceList(container) {
         <div class="card">
             <div class="card-header">
                 <h3 class="card-title">Maintenance Requests${defaultAptName ? ` – ${defaultAptName}` : ''}</h3>
+                ${role === 'caretaker' ? `
                 <button class="btn btn-primary" id="add-request-btn">
                     <i class="fas fa-plus"></i> New Request
-                </button>
+                </button>` : ''}
             </div>
             <div class="filter-bar">
                 ${role === 'landlord' ? `
@@ -62,6 +63,14 @@ export default async function maintenanceList(container) {
                 <div class="form-group">
                     <input type="date" class="form-input" id="filter-end" placeholder="To date">
                 </div>
+                <div class="form-group">
+                    <button class="btn btn-sm btn-outline" id="btn-this-month">This Month</button>
+                    <button class="btn btn-sm btn-outline" id="btn-last-month">Last Month</button>
+                </div>
+                <div class="search-bar" style="flex:1;">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="form-input" id="maintenance-search" placeholder="Search title or unit...">
+                </div>
             </div>
             <div id="maintenance-summary" class="mt-2" style="display:none;"></div>
             <div id="maintenance-table" class="table-container">
@@ -74,6 +83,9 @@ export default async function maintenanceList(container) {
     const prioritySelect = container.querySelector('#filter-priority');
     const startInput = container.querySelector('#filter-start');
     const endInput = container.querySelector('#filter-end');
+    const searchInput = container.querySelector('#maintenance-search');
+    const btnThisMonth = container.querySelector('#btn-this-month');
+    const btnLastMonth = container.querySelector('#btn-last-month');
     const addBtn = container.querySelector('#add-request-btn');
     const tableContainer = container.querySelector('#maintenance-table');
     const summaryContainer = container.querySelector('#maintenance-summary');
@@ -85,7 +97,32 @@ export default async function maintenanceList(container) {
     prioritySelect.addEventListener('change', loadRequests);
     startInput.addEventListener('change', loadRequests);
     endInput.addEventListener('change', loadRequests);
-    addBtn.addEventListener('click', openCreateRequestModal);
+    if (addBtn) addBtn.addEventListener('click', openCreateRequestModal);
+
+    // Quick date buttons
+    const now = new Date();
+    const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const lastDayThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
+    const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
+
+    btnThisMonth.addEventListener('click', () => {
+        startInput.value = firstDayThisMonth;
+        endInput.value = lastDayThisMonth;
+        loadRequests();
+    });
+    btnLastMonth.addEventListener('click', () => {
+        startInput.value = firstDayLastMonth;
+        endInput.value = lastDayLastMonth;
+        loadRequests();
+    });
+
+    // Debounced search
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(loadRequests, 300);
+    });
 
     loadRequests();
 
@@ -101,6 +138,7 @@ export default async function maintenanceList(container) {
         const priority = prioritySelect.value;
         const start = startInput.value;
         const end = endInput.value;
+        const search = searchInput.value.trim().toLowerCase();
 
         let query = '';
         if (status) query += `status=${status}&`;
@@ -112,22 +150,37 @@ export default async function maintenanceList(container) {
 
         try {
             const response = await apiService.get(endpoint);
-            const requests = response.success ? response.data : [];
+            let requests = response.success ? response.data : [];
+
+            // Client‑side search filter (title or unit)
+            if (search) {
+                requests = requests.filter(r =>
+                    (r.title || '').toLowerCase().includes(search) ||
+                    (r.units?.unit_number || '').toLowerCase().includes(search)
+                );
+            }
 
             // Summary
             if (requests.length > 0) {
-                const now = new Date();
                 const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
                 const reported = requests.filter(r => r.status === 'reported').length;
                 const inProgress = requests.filter(r => r.status === 'in_progress').length;
                 const resolvedThisMonth = requests.filter(r => r.status === 'resolved' && r.date_resolved >= firstOfMonth).length;
+                const total = requests.length;
 
                 summaryContainer.innerHTML = `
                     <div style="display:flex; gap:12px; flex-wrap:wrap;">
                         <div class="stat-card">
+                            <div class="stat-icon primary"><i class="fas fa-list-ul"></i></div>
+                            <div class="stat-info">
+                                <div class="stat-label">Total</div>
+                                <div class="stat-value">${total}</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
                             <div class="stat-icon warning"><i class="fas fa-exclamation-circle"></i></div>
                             <div class="stat-info">
-                                <div class="stat-label">Open (Reported)</div>
+                                <div class="stat-label">Open</div>
                                 <div class="stat-value">${reported}</div>
                             </div>
                         </div>
@@ -153,16 +206,15 @@ export default async function maintenanceList(container) {
             }
 
             if (requests.length === 0) {
-                tableContainer.innerHTML = `<div class="empty-state"><i class="fas fa-tools"></i><h3>No requests</h3></div>`;
+                tableContainer.innerHTML = `<div class="empty-state"><i class="fas fa-tools"></i><h3>No requests found</h3></div>`;
                 return;
             }
 
-            // Can escalate? (caretaker only, not escalated, older than 2 days)
+            // Can escalate? (caretaker only, not escalated, older than 2 days, still reported)
             const canEscalate = (r) => {
                 if (role !== 'caretaker') return false;
                 if (r.escalated) return false;
                 const reportedDate = new Date(r.date_reported);
-                const now = new Date();
                 const diffDays = (now - reportedDate) / (1000 * 60 * 60 * 24);
                 return diffDays >= 2 && r.status === 'reported';
             };
@@ -185,13 +237,9 @@ export default async function maintenanceList(container) {
                                 <td>${r.assigned_to || '-'}</td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="btn btn-sm btn-outline update-btn" data-id="${r.id}" data-status="${r.status}" data-assigned="${r.assigned_to || ''}" data-cost="${r.cost_incurred || 0}">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        ${canEscalate(r) ? `
-                                        <button class="btn btn-sm btn-outline escalate-btn" data-id="${r.id}" title="Escalate to landlord">
-                                            <i class="fas fa-arrow-up"></i>
-                                        </button>` : ''}
+                                        <button class="btn btn-sm btn-outline update-btn" data-id="${r.id}" data-status="${r.status}" data-assigned="${r.assigned_to || ''}" data-cost="${r.cost_incurred || 0}" title="Update"><i class="fas fa-edit"></i></button>
+                                        ${canEscalate(r) ? `<button class="btn btn-sm btn-outline escalate-btn" data-id="${r.id}" title="Escalate"><i class="fas fa-arrow-up"></i></button>` : ''}
+                                        <button class="btn btn-sm btn-outline danger delete-request-btn" data-id="${r.id}" title="Delete"><i class="fas fa-trash"></i></button>
                                     </div>
                                 </td>
                             </tr>
@@ -199,21 +247,22 @@ export default async function maintenanceList(container) {
                     </tbody>
                 </table>`;
 
-            // Event delegation for update and escalate buttons
+            // Event delegation
             tableContainer.addEventListener('click', (e) => {
                 const updateBtn = e.target.closest('.update-btn');
                 if (updateBtn) {
-                    const id = updateBtn.dataset.id;
-                    const currentStatus = updateBtn.dataset.status;
-                    const assignedTo = updateBtn.dataset.assigned;
-                    const cost = updateBtn.dataset.cost;
-                    openUpdateModal(id, currentStatus, assignedTo, cost);
+                    const { id, status, assigned, cost } = updateBtn.dataset;
+                    openUpdateModal(id, status, assigned, cost);
                     return;
                 }
                 const escalateBtn = e.target.closest('.escalate-btn');
                 if (escalateBtn) {
-                    const id = escalateBtn.dataset.id;
-                    escalateRequest(id);
+                    escalateRequest(escalateBtn.dataset.id);
+                    return;
+                }
+                const deleteBtn = e.target.closest('.delete-request-btn');
+                if (deleteBtn) {
+                    deleteRequest(deleteBtn.dataset.id);
                     return;
                 }
             });
@@ -224,83 +273,8 @@ export default async function maintenanceList(container) {
         }
     }
 
-    // Create request modal (for caretaker/landlord)
-    async function openCreateRequestModal() {
-        const apartmentId = aptSelect.value || defaultAptId;
-        if (!apartmentId) {
-            showToast('Please select an apartment first', 'warning');
-            return;
-        }
-
-        const unitsRes = await apiService.get(`/units/apartment/${apartmentId}`);
-        const units = unitsRes.success ? unitsRes.data : [];
-
-        const { showFormModal } = await import('../../components/modal.js');
-        const formHtml = `
-            <div class="form-group">
-                <label class="form-label">Unit</label>
-                <select class="form-select" id="req-unit">
-                    ${units.map(u => `<option value="${u.id}">${u.unit_number}</option>`).join('')}
-                </select>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Title <span class="required">*</span></label>
-                <input class="form-input" id="req-title" required>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea class="form-textarea" id="req-desc" rows="3"></textarea>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Priority</label>
-                <select class="form-select" id="req-priority">
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                </select>
-            </div>`;
-
-        showFormModal('New Maintenance Request', formHtml, async (overlay) => {
-            const data = {
-                unit_id: overlay.querySelector('#req-unit').value,
-                apartment_id: apartmentId,
-                title: overlay.querySelector('#req-title').value.trim(),
-                description: overlay.querySelector('#req-desc').value.trim(),
-                priority: overlay.querySelector('#req-priority').value
-            };
-            if (!data.title) {
-                showToast('Title is required', 'error');
-                return false;
-            }
-            try {
-                await apiService.post('/maintenance', data);
-                showToast('Request created', 'success');
-                loadRequests();
-            } catch (e) {
-                showToast(e.message, 'error');
-                return false;
-            }
-        });
-    }
-
-    // Escalate request
-    async function escalateRequest(requestId) {
-        const { showConfirm } = await import('../../components/modal.js');
-        showConfirm('Escalate Request', 'Notify the landlord about this request?', async () => {
-            try {
-                await apiService.put(`/maintenance/${requestId}/escalate`);
-                showToast('Request escalated to landlord', 'success');
-                loadRequests();
-            } catch (e) {
-                showToast(e.message, 'error');
-            }
-        });
-    }
-
-    // Update modal with comments
+    // ---------- UPDATE MODAL (unchanged, with comments) ----------
     async function openUpdateModal(requestId, currentStatus, assignedTo, cost) {
-        // Fetch existing comments
         let commentsHtml = '<p>Loading comments...</p>';
         try {
             const commentsRes = await apiService.get(`/maintenance/${requestId}/comments`);
@@ -353,15 +327,99 @@ export default async function maintenanceList(container) {
             const commentText = overlay.querySelector('#m-comment').value.trim();
 
             try {
-                // Update request
                 await apiService.put(`/maintenance/${requestId}`, updates);
-
-                // Add comment if provided
                 if (commentText) {
                     await apiService.post(`/maintenance/${requestId}/comments`, { comment: commentText });
                 }
-
                 showToast('Request updated', 'success');
+                loadRequests();
+            } catch (e) {
+                showToast(e.message, 'error');
+                return false;
+            }
+        });
+    }
+
+    // ---------- ESCALATE ----------
+    async function escalateRequest(requestId) {
+        const { showConfirm } = await import('../../components/modal.js');
+        showConfirm('Escalate Request', 'Notify the landlord about this request?', async () => {
+            try {
+                await apiService.put(`/maintenance/${requestId}/escalate`);
+                showToast('Request escalated to landlord', 'success');
+                loadRequests();
+            } catch (e) {
+                showToast(e.message, 'error');
+            }
+        });
+    }
+
+    // ---------- DELETE ----------
+    async function deleteRequest(requestId) {
+        const { showConfirm } = await import('../../components/modal.js');
+        showConfirm('Delete Request', 'Are you sure you want to delete this maintenance request?', async () => {
+            try {
+                await apiService.delete(`/maintenance/${requestId}`);
+                showToast('Request deleted', 'success');
+                loadRequests();
+            } catch (e) {
+                showToast(e.message, 'error');
+            }
+        });
+    }
+
+    // ---------- CREATE REQUEST MODAL (only for caretaker) ----------
+    async function openCreateRequestModal() {
+        const apartmentId = aptSelect.value || defaultAptId;
+        if (!apartmentId) {
+            showToast('Please select an apartment first', 'warning');
+            return;
+        }
+
+        const unitsRes = await apiService.get(`/units/apartment/${apartmentId}`);
+        const units = unitsRes.success ? unitsRes.data : [];
+
+        const { showFormModal } = await import('../../components/modal.js');
+        const formHtml = `
+            <div class="form-group">
+                <label class="form-label">Unit</label>
+                <select class="form-select" id="req-unit">
+                    ${units.map(u => `<option value="${u.id}">${u.unit_number}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Title <span class="required">*</span></label>
+                <input class="form-input" id="req-title" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-textarea" id="req-desc" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Priority</label>
+                <select class="form-select" id="req-priority">
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                </select>
+            </div>`;
+
+        showFormModal('New Maintenance Request', formHtml, async (overlay) => {
+            const data = {
+                unit_id: overlay.querySelector('#req-unit').value,
+                apartment_id: apartmentId,
+                title: overlay.querySelector('#req-title').value.trim(),
+                description: overlay.querySelector('#req-desc').value.trim(),
+                priority: overlay.querySelector('#req-priority').value
+            };
+            if (!data.title) {
+                showToast('Title is required', 'error');
+                return false;
+            }
+            try {
+                await apiService.post('/maintenance', data);
+                showToast('Request created', 'success');
                 loadRequests();
             } catch (e) {
                 showToast(e.message, 'error');
