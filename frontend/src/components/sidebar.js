@@ -44,10 +44,12 @@ export async function setupSidebar() {
         role = staffRole;
     }
 
-    const nav = document.getElementById('sidebar-nav');
+    // ----- CREATE SIDEBAR NAV IF IT DOESN'T EXIST -----
+    let nav = document.getElementById('sidebar-nav');
     if (!nav) {
-        console.error('Sidebar nav element #sidebar-nav not found');
-        return;
+        nav = document.createElement('nav');
+        nav.id = 'sidebar-nav';
+        sidebar.appendChild(nav);
     }
 
     const menuItems = getMenuItems(role);
