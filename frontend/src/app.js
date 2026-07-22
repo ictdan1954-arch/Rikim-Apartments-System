@@ -28,6 +28,16 @@ router.addRoute('/dashboard', {
     component: () => import('./pages/dashboard/dashboard.js')
 });
 
+// =============================================
+// CLEANER DASHBOARD (NEW ROUTE)
+// =============================================
+router.addRoute('/cleaning/dashboard', {
+    title: 'Cleaner Dashboard',
+    auth: true,
+    role: ['cleaner'],
+    component: () => import('./pages/cleaning/dashboard.js')
+});
+
 // Apartments
 router.addRoute('/apartments', {
     title: 'Apartments',
@@ -159,11 +169,23 @@ document.addEventListener('DOMContentLoaded', () => {
     router.handleRoute();
 });
 
+// =============================================
+// UPDATE USER INFO IN SIDEBAR
+// =============================================
 function updateUserInfo() {
     const user = authService.user;
     if (user) {
         document.getElementById('user-name').textContent = user.full_name;
-        document.getElementById('user-role').textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+        
+        // Display role: show 'Cleaner' if staff_role is cleaner, otherwise main role
+        let displayRole = user.role;
+        if (user.staff_role === 'cleaner') {
+            displayRole = 'Cleaner';
+        } else {
+            displayRole = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+        }
+        document.getElementById('user-role').textContent = displayRole;
+        
         if (user.profile_photo) {
             document.getElementById('user-avatar').src = user.profile_photo;
         }
