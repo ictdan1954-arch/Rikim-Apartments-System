@@ -33,9 +33,6 @@ class AuthService {
         return this.user?.role || null;
     }
 
-    // =============================================
-    // GET STAFF ROLE (for cleaners, etc.)
-    // =============================================
     getStaffRole() {
         return this.user?.staff_role || null;
     }
@@ -44,14 +41,9 @@ class AuthService {
         return !!this.token && !!this.user;
     }
 
-    // =============================================
-    // UPDATED: Accepts identifier (phone, email, or username)
-    // =============================================
-    async login(identifier, password) {
-        const response = await apiService.post(CONFIG.ENDPOINTS.AUTH.LOGIN, { 
-            identifier,  // ← Changed from 'phone' to 'identifier'
-            password 
-        });
+    // ✅ FIXED: Uses 'phone' field (backend expects this)
+    async login(phone, password) {
+        const response = await apiService.post(CONFIG.ENDPOINTS.AUTH.LOGIN, { phone, password });
         if (response.success) {
             this.saveToken(response.data.token);
             this.saveUser(response.data.user);
@@ -86,14 +78,11 @@ class AuthService {
         return apiService.get(CONFIG.ENDPOINTS.AUTH.USERS);
     }
 
-    // =============================================
-    // FIXED: Consistent storage keys
-    // =============================================
     logout() {
         this.user = null;
         this.token = null;
-        localStorage.removeItem('rikim_token');   // ← Fixed
-        localStorage.removeItem('rikim_user');    // ← Fixed
+        localStorage.removeItem('rikim_token');
+        localStorage.removeItem('rikim_user');
         window.location.hash = '#/login';
         window.location.reload();
     }
