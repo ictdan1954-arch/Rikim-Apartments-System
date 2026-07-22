@@ -1,5 +1,4 @@
 import { authService } from '../services/auth.service.js';
-import { apiService } from '../services/api.service.js';   // ADDED
 import { router } from '../router.js';
 import { showToast } from '../components/toast.js';
 import { setupSidebar } from '../components/sidebar.js';
@@ -7,15 +6,12 @@ import { setupSidebar } from '../components/sidebar.js';
 export default async function loginPage() {
     console.log('✅ loginPage loaded!');
 
-    // Hide the main app
     const app = document.getElementById('app');
     if (app) app.style.display = 'none';
 
-    // Remove any existing login overlay
     const existing = document.getElementById('login-overlay');
     if (existing) existing.remove();
 
-    // Create the overlay
     const overlay = document.createElement('div');
     overlay.id = 'login-overlay';
     overlay.style.cssText = `
@@ -35,7 +31,6 @@ export default async function loginPage() {
         padding: 20px;
     `;
 
-    // Build the login card
     const card = document.createElement('div');
     card.style.cssText = `
         max-width: 420px;
@@ -92,84 +87,67 @@ export default async function loginPage() {
     overlay.appendChild(card);
     document.body.appendChild(overlay);
 
-    // ---- Event listeners ----
-    const toggleBtn = overlay.querySelector('#toggle-password');
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', function() {
-            const pwd = overlay.querySelector('#login-password');
-            const icon = this.querySelector('i');
-            pwd.type = pwd.type === 'password' ? 'text' : 'password';
-            icon.className = pwd.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
-        });
-    }
+    // Toggle password visibility
+    overlay.querySelector('#toggle-password')?.addEventListener('click', function() {
+        const pwd = overlay.querySelector('#login-password');
+        const icon = this.querySelector('i');
+        pwd.type = pwd.type === 'password' ? 'text' : 'password';
+        icon.className = pwd.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+    });
 
-    const forgotLink = overlay.querySelector('#forgot-password-link');
-    if (forgotLink) {
-        forgotLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            showToast('Please contact your landlord or caretaker to reset your password.', 'info');
-        });
-    }
+    // Forgot password
+    overlay.querySelector('#forgot-password-link')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        showToast('Please contact your landlord or caretaker to reset your password.', 'info');
+    });
 
-    const loginForm = overlay.querySelector('#login-form');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const identifier = overlay.querySelector('#login-identifier').value.trim();
-            const password = overlay.querySelector('#login-password').value;
-            const errorEl = overlay.querySelector('#login-error');
-            if (errorEl) errorEl.style.display = 'none';
+    // Login form submit
+    overlay.querySelector('#login-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const identifier = overlay.querySelector('#login-identifier').value.trim();
+        const password = overlay.querySelector('#login-password').value;
+        const errorEl = overlay.querySelector('#login-error');
+        if (errorEl) errorEl.style.display = 'none';
 
-            try {
-                const btn = loginForm.querySelector('button[type="submit"]');
-                btn.disabled = true;
-                btn.innerHTML = '<span style="display:inline-block; width:20px; height:20px; border:3px solid #fff; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></span> Signing in...';
+        const btn = overlay.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Signing in...';
 
-                const response = await authService.login(identifier, password);
-                if (response.success) {
-                    showToast('Welcome back!', 'success');
-
-                    // Remove overlay and show app immediately
-                    overlay.remove();
-                    if (app) app.style.display = '';
-
-                    // Navigate to correct dashboard right away
-                    router.navigateByRole();
-
-                    // If the logged-in user is a staff member, we need to fetch
-                    // the full profile to get staff_role (e.g. 'cleaner').
-                    if (authService.getRole() === 'staff') {
-                        try {
-                            const profile = await apiService.get('/auth/profile');  // or /auth/me
-                            if (profile.success && profile.data) {
-                                authService.saveUser(profile.data);  // updates user with staff_role
-                            }
-                        } catch (e) {
-                            console.error('Failed to fetch staff profile, sidebar may remain generic:', e);
-                        }
-                    }
-
-                    // Set up sidebar (now with correct staff_role, if available)
-                    setupSidebar().catch(err => console.error('Sidebar setup error:', err));
-                } else {
-                    throw new Error(response.message || 'Login failed');
-                }
-            } catch (error) {
-                if (errorEl) {
-                    errorEl.textContent = error.message;
-                    errorEl.style.display = 'block';
-                }
-                showToast(error.message, 'error');
-            } finally {
-                const btn = loginForm.querySelector('button[type="submit"]');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+        try {
+            const response = await authService.login(identifier, password);
+            if (response.success) {
+                showToast('Welcome back!', 'success');
+                overlay.remove();
+                if (app) app.style.display = '';
+                router.navigateByRole();
+                setupSidebar().catch(err => console.error('Sidebar setup error:', err));
+            } else {
+                throw new Error(response.message || 'Login failed');
             }
-        });
-    }
+        } catch (error) {
+            if (errorEl) {
+                errorEl.textContent = error.message;
+                errorEl.style.display = 'block';
+            }
+            showToast(error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+        }
+    });
 
-    // Add the spin animation
+    // Spinner animation
     const style = document.createElement('style');
-    style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
+    style.textContent = `
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            display: inline-block;
+            width: 20px; height: 20px;
+            border: 3px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+    `;
     document.head.appendChild(style);
 }
