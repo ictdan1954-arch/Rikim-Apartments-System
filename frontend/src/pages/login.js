@@ -1,18 +1,36 @@
 import { authService } from '../services/auth.service.js';
-import { apiService } from '../services/api.service.js';   // ADDED for fallback call
 import { router } from '../router.js';
 import { showToast } from '../components/toast.js';
 import { setupSidebar } from '../components/sidebar.js';
 
 export default async function loginPage() {
+    // =============================================
+    // EARLY EXIT: USER ALREADY LOGGED IN
+    // =============================================
+    if (authService.isAuthenticated()) {
+        // Ensure the main app is visible (it might have been hidden previously)
+        const app = document.getElementById('app');
+        if (app) app.style.display = '';
+
+        // Navigate to the correct dashboard
+        router.navigateByRole();
+
+        // Build the sidebar immediately (no loading spinner / overlay)
+        setupSidebar().catch(err => console.error('Sidebar setup error:', err));
+        return;   // stop – do NOT create the login overlay
+    }
+
     console.log('✅ loginPage loaded!');
 
+    // Hide the main app (we'll show it again after successful login)
     const app = document.getElementById('app');
     if (app) app.style.display = 'none';
 
+    // Remove any existing login overlay
     const existing = document.getElementById('login-overlay');
     if (existing) existing.remove();
 
+    // Create the overlay
     const overlay = document.createElement('div');
     overlay.id = 'login-overlay';
     overlay.style.cssText = `
@@ -32,6 +50,7 @@ export default async function loginPage() {
         padding: 20px;
     `;
 
+    // Build the login card
     const card = document.createElement('div');
     card.style.cssText = `
         max-width: 420px;
@@ -88,83 +107,71 @@ export default async function loginPage() {
     overlay.appendChild(card);
     document.body.appendChild(overlay);
 
-    // Toggle password visibility
-    overlay.querySelector('#toggle-password')?.addEventListener('click', function() {
-        const pwd = overlay.querySelector('#login-password');
-        const icon = this.querySelector('i');
-        pwd.type = pwd.type === 'password' ? 'text' : 'password';
-        icon.className = pwd.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
-    });
+    // ---- Event listeners ----
+    const toggleBtn = overlay.querySelector('#toggle-password');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function() {
+            const pwd = overlay.querySelector('#login-password');
+            const icon = this.querySelector('i');
+            pwd.type = pwd.type === 'password' ? 'text' : 'password';
+            icon.className = pwd.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+        });
+    }
 
-    // Forgot password
-    overlay.querySelector('#forgot-password-link')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        showToast('Please contact your landlord or caretaker to reset your password.', 'info');
-    });
+    const forgotLink = overlay.querySelector('#forgot-password-link');
+    if (forgotLink) {
+        forgotLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            showToast('Please contact your landlord or caretaker to reset your password.', 'info');
+        });
+    }
 
-    // Login form submit
-    overlay.querySelector('#login-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const identifier = overlay.querySelector('#login-identifier').value.trim();
-        const password = overlay.querySelector('#login-password').value;
-        const errorEl = overlay.querySelector('#login-error');
-        if (errorEl) errorEl.style.display = 'none';
+    const loginForm = overlay.querySelector('#login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const identifier = overlay.querySelector('#login-identifier').value.trim();
+            const password = overlay.querySelector('#login-password').value;
+            const errorEl = overlay.querySelector('#login-error');
+            if (errorEl) errorEl.style.display = 'none';
 
-        const btn = overlay.querySelector('button[type="submit"]');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner"></span> Signing in...';
+            try {
+                const btn = loginForm.querySelector('button[type="submit"]');
+                btn.disabled = true;
+                btn.innerHTML = '<span style="display:inline-block; width:20px; height:20px; border:3px solid #fff; border-top-color:transparent; border-radius:50%; animation:spin 0.8s linear infinite;"></span> Signing in...';
 
-        try {
-            const response = await authService.login(identifier, password);
-            if (response.success) {
-                showToast('Welcome back!', 'success');
-                overlay.remove();
-                if (app) app.style.display = '';
-                router.navigateByRole();
+                const response = await authService.login(identifier, password);
+                if (response.success) {
+                    showToast('Welcome back!', 'success');
 
-                // ---- ENSURE staff_role IS AVAILABLE FOR STAFF USERS ----
-                if (authService.getRole() === 'staff' && !authService.getStaffRole()) {
-                    try {
-                        const phone = authService.user.phone;
-                        const staffRes = await apiService.get(`/staff/members/by-phone/${phone}`);
-                        if (staffRes.success && staffRes.data && staffRes.data.staff_role) {
-                            const updatedUser = { ...authService.user, staff_role: staffRes.data.staff_role };
-                            authService.saveUser(updatedUser);
-                        }
-                    } catch (e) {
-                        console.warn('Could not fetch staff_role, sidebar may remain generic', e);
-                    }
+                    // Remove overlay and show app
+                    overlay.remove();
+                    if (app) app.style.display = '';
+
+                    // Navigate to dashboard
+                    router.navigateByRole();
+
+                    // Set up sidebar in background
+                    setupSidebar().catch(err => console.error('Sidebar setup error:', err));
+                } else {
+                    throw new Error(response.message || 'Login failed');
                 }
-
-                // Sidebar loads in background (now with correct staff_role if available)
-                setupSidebar().catch(err => console.error('Sidebar setup error:', err));
-            } else {
-                throw new Error(response.message || 'Login failed');
+            } catch (error) {
+                if (errorEl) {
+                    errorEl.textContent = error.message;
+                    errorEl.style.display = 'block';
+                }
+                showToast(error.message, 'error');
+            } finally {
+                const btn = loginForm.querySelector('button[type="submit"]');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
             }
-        } catch (error) {
-            if (errorEl) {
-                errorEl.textContent = error.message;
-                errorEl.style.display = 'block';
-            }
-            showToast(error.message, 'error');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
-        }
-    });
+        });
+    }
 
-    // Spinner animation
+    // Add the spin animation
     const style = document.createElement('style');
-    style.textContent = `
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .spinner {
-            display: inline-block;
-            width: 20px; height: 20px;
-            border: 3px solid #fff;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-    `;
+    style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
     document.head.appendChild(style);
 }
