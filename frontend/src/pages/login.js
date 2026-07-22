@@ -1,6 +1,7 @@
 import { authService } from '../services/auth.service.js';
 import { router } from '../router.js';
 import { showToast } from '../components/toast.js';
+import { setupSidebar, updateSidebarUserInfo } from '../components/sidebar.js';
 
 export default async function loginPage() {
     console.log('✅ loginPage loaded!');
@@ -126,9 +127,16 @@ export default async function loginPage() {
                 const response = await authService.login(identifier, password);
                 if (response.success) {
                     showToast('Welcome back!', 'success');
+
                     // Remove overlay and show app
                     overlay.remove();
                     if (app) app.style.display = '';
+
+                    // ✅ Re-initialize sidebar now that user is authenticated
+                    await setupSidebar();
+                    updateSidebarUserInfo();
+
+                    // Navigate to the appropriate dashboard
                     router.navigateByRole();
                 } else {
                     throw new Error(response.message || 'Login failed');
