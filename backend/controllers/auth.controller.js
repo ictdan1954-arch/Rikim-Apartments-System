@@ -115,20 +115,34 @@ const authController = {
             }
 
             // ================================================
-            // FETCH STAFF SUB-ROLE FOR STAFF USERS
+            // FETCH STAFF SUB-ROLE (two‑step, always works)
             // ================================================
             let staff_role = null;
             if (user.role === 'staff') {
-                const { data: staffRecord } = await supabase
-                    .from('staff_members')
-                    .select('staff_role_id(role_name)')   // adjust if you have a plain column like 'staff_role'
-                    .eq('phone', user.phone)
-                    .maybeSingle();
+                try {
+                    // Step 1: get the staff_members record by phone to obtain staff_role_id
+                    const { data: staffRecord, error: staffError } = await supabase
+                        .from('staff_members')
+                        .select('staff_role_id')
+                        .eq('phone', user.phone)
+                        .maybeSingle();
 
-                if (staffRecord?.staff_role_id) {
-                    staff_role = staffRecord.staff_role_id.role_name;   // e.g., 'cleaner'
+                    if (!staffError && staffRecord?.staff_role_id) {
+                        // Step 2: get the role name from staff_roles table
+                        const { data: roleData, error: roleError } = await supabase
+                            .from('staff_roles')
+                            .select('role_name')
+                            .eq('id', staffRecord.staff_role_id)
+                            .single();
+
+                        if (!roleError && roleData) {
+                            staff_role = roleData.role_name;   // e.g., 'cleaner'
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch staff_role:', err);
+                    // leave staff_role as null → fallback to generic staff menu
                 }
-                // If your table has a direct column: staff_role = staffRecord?.staff_role;
             }
 
             // Update last login
@@ -137,15 +151,18 @@ const authController = {
                 .update({ last_login: new Date().toISOString() })
                 .eq('id', user.id);
 
-            // Build the payload for JWT – include staff_role
+            // Build token payload (always include staff_role)
             const tokenPayload = {
                 id: user.id,
                 role: user.role,
-                staff_role: staff_role || null    // <-- added to token
+                staff_role: staff_role || null,
+                full_name: user.full_name,
+                phone: user.phone,
+                email: user.email
             };
             const token = generateToken(tokenPayload);
 
-            // Remove password and attach staff_role to the response user object
+            // Remove password and attach staff_role to the returned user object
             const { password_hash, ...userWithoutPassword } = user;
             userWithoutPassword.staff_role = staff_role || null;
 
@@ -175,12 +192,26 @@ const authController = {
 
             // Attach staff_role for staff users
             if (user.role === 'staff') {
-                const { data: staffRecord } = await supabase
-                    .from('staff_members')
-                    .select('staff_role_id(role_name)')
-                    .eq('phone', user.phone)
-                    .maybeSingle();
-                user.staff_role = staffRecord?.staff_role_id?.role_name || null;
+                try {
+                    const { data: staffRecord } = await supabase
+                        .from('staff_members')
+                        .select('staff_role_id')
+                        .eq('phone', user.phone)
+                        .maybeSingle();
+
+                    if (staffRecord?.staff_role_id) {
+                        const { data: roleData } = await supabase
+                            .from('staff_roles')
+                            .select('role_name')
+                            .eq('id', staffRecord.staff_role_id)
+                            .single();
+                        user.staff_role = roleData?.role_name || null;
+                    } else {
+                        user.staff_role = null;
+                    }
+                } catch (err) {
+                    user.staff_role = null;
+                }
             } else {
                 user.staff_role = null;
             }
