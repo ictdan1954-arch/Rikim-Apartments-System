@@ -36,13 +36,13 @@ export async function setupSidebar() {
             console.warn('Could not fetch staff_role, using generic staff menu');
         }
     } else if (staffRole) {
-        // Normalise to lower case for consistent comparisons
         staffRole = staffRole.toLowerCase();
     }
 
-    // ✅ Override the main role for cleaners so the sidebar treats them as a top‑level role
-    if (role === 'staff' && staffRole === 'cleaner') {
-        role = 'cleaner';
+    // Override the main role for any known staff sub‑role
+    const knownSubRoles = ['cleaner', 'electrician', 'plumber', 'gardener'];
+    if (role === 'staff' && staffRole && knownSubRoles.includes(staffRole)) {
+        role = staffRole;   // e.g., 'electrician', 'plumber', 'gardener'
     }
 
     // Build navigation using the (possibly overridden) role
@@ -130,11 +130,18 @@ export function updateSidebarUserInfo() {
     if (nameEl) nameEl.textContent = user.full_name;
 
     if (roleEl) {
-        // Use the normalised staff_role (case‑insensitive)
         const staffRole = (user.staff_role || '').toLowerCase();
-        if (staffRole === 'cleaner') {
-            roleEl.textContent = 'Cleaner';
+        // Display the sub‑role name properly capitalised
+        const knownRoles = {
+            cleaner: 'Cleaner',
+            electrician: 'Electrician',
+            plumber: 'Plumber',
+            gardener: 'Gardener'
+        };
+        if (knownRoles[staffRole]) {
+            roleEl.textContent = knownRoles[staffRole];
         } else {
+            // Fallback to main role with capitalisation
             roleEl.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
         }
     }
@@ -145,10 +152,10 @@ export function updateSidebarUserInfo() {
 }
 
 // =============================================
-// PRIVATE: MENU DEFINITIONS (now based on a unified role)
+// PRIVATE: MENU DEFINITIONS
 // =============================================
 function getMenuItems(role) {
-    // Cleaner is treated as a distinct role
+    // ---------- SUB‑ROLE MENUS ----------
     if (role === 'cleaner') {
         return [
             { section: 'MAIN', items: [
@@ -163,6 +170,49 @@ function getMenuItems(role) {
         ];
     }
 
+    if (role === 'electrician') {
+        return [
+            { section: 'MAIN', items: [
+                { icon: 'fa-th-large', text: 'Dashboard', href: '/electrician/dashboard' }
+            ]},
+            { section: 'MY WORK', items: [
+                { icon: 'fa-tasks', text: 'My Tasks', href: '/electrician/dashboard' },
+                { icon: 'fa-tools', text: 'Supplies', href: '/electrician/dashboard' },
+                { icon: 'fa-history', text: 'My Salary', href: '/electrician/dashboard' },
+                { icon: 'fa-envelope', text: 'Messages', href: '/electrician/dashboard' }
+            ]}
+        ];
+    }
+
+    if (role === 'plumber') {
+        return [
+            { section: 'MAIN', items: [
+                { icon: 'fa-th-large', text: 'Dashboard', href: '/plumber/dashboard' }
+            ]},
+            { section: 'MY WORK', items: [
+                { icon: 'fa-tasks', text: 'My Tasks', href: '/plumber/dashboard' },
+                { icon: 'fa-wrench', text: 'Supplies', href: '/plumber/dashboard' },
+                { icon: 'fa-history', text: 'My Salary', href: '/plumber/dashboard' },
+                { icon: 'fa-envelope', text: 'Messages', href: '/plumber/dashboard' }
+            ]}
+        ];
+    }
+
+    if (role === 'gardener') {
+        return [
+            { section: 'MAIN', items: [
+                { icon: 'fa-th-large', text: 'Dashboard', href: '/gardener/dashboard' }
+            ]},
+            { section: 'MY WORK', items: [
+                { icon: 'fa-tasks', text: 'My Tasks', href: '/gardener/dashboard' },
+                { icon: 'fa-seedling', text: 'Supplies', href: '/gardener/dashboard' },
+                { icon: 'fa-history', text: 'My Salary', href: '/gardener/dashboard' },
+                { icon: 'fa-envelope', text: 'Messages', href: '/gardener/dashboard' }
+            ]}
+        ];
+    }
+
+    // ---------- MAIN ROLE MENUS ----------
     const landlordMenu = [
         { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/dashboard' }] },
         { section: 'PROPERTIES', items: [
@@ -221,11 +271,11 @@ function getMenuItems(role) {
         ]}
     ];
 
-    // The fallback order: cleaner is already handled above, so it won't reach here
+    // Fallback order
     if (role === 'landlord') return landlordMenu;
     if (role === 'caretaker') return caretakerMenu;
     if (role === 'tenant') return tenantMenu;
-    if (role === 'staff') return staffMenu;      // other staff (electrician, etc.)
+    if (role === 'staff') return staffMenu;   // only unknown sub‑roles land here
     return [];
 }
 
@@ -260,8 +310,9 @@ function updateActiveLink() {
         if (currentHash.startsWith(href) || (href === '/dashboard' && currentHash === '/dashboard')) {
             link.classList.add('active');
         }
-        // Also highlight '/cleaning/dashboard' for cleaner sub‑links
-        if (href === '/cleaning/dashboard' && currentHash.startsWith('/cleaning/dashboard')) {
+        // Highlight sub‑role dashboards
+        const subRoleDashboards = ['/cleaning/dashboard', '/electrician/dashboard', '/plumber/dashboard', '/gardener/dashboard'];
+        if (subRoleDashboards.includes(href) && currentHash.startsWith(href)) {
             link.classList.add('active');
         }
     });
