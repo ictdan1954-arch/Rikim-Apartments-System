@@ -120,18 +120,20 @@ const authController = {
             let staff_role = null;
             if (user.role === 'staff') {
                 try {
-                    // Step 1: get the staff_members record by phone to obtain staff_role_id
+                    // IMPORTANT: Check your actual column names in the database.
+                    // If the staff_members table has a column called `staff_role` (text) instead of
+                    // `staff_role_id` (foreign key), change the query accordingly.
                     const { data: staffRecord, error: staffError } = await supabase
                         .from('staff_members')
-                        .select('staff_role_id')
+                        .select('staff_role_id')   // <-- might be 'staff_role' if it's text
                         .eq('phone', user.phone)
                         .maybeSingle();
 
                     if (!staffError && staffRecord?.staff_role_id) {
-                        // Step 2: get the role name from staff_roles table
+                        // If staff_role_id is a foreign key, get the name from staff_roles
                         const { data: roleData, error: roleError } = await supabase
                             .from('staff_roles')
-                            .select('role_name')
+                            .select('role_name')   // <-- might be 'name' or 'role'
                             .eq('id', staffRecord.staff_role_id)
                             .single();
 
@@ -139,6 +141,8 @@ const authController = {
                             staff_role = roleData.role_name;   // e.g., 'cleaner'
                         }
                     }
+                    // If staff_role is a text column directly, you'd do:
+                    // staff_role = staffRecord?.staff_role || null;
                 } catch (err) {
                     console.error('Failed to fetch staff_role:', err);
                     // leave staff_role as null → fallback to generic staff menu
@@ -195,7 +199,7 @@ const authController = {
                 try {
                     const { data: staffRecord } = await supabase
                         .from('staff_members')
-                        .select('staff_role_id')
+                        .select('staff_role_id')   // adjust column if needed
                         .eq('phone', user.phone)
                         .maybeSingle();
 
