@@ -8,7 +8,6 @@ class AuthService {
         this.loadUser();
     }
 
-    // Restore user from localStorage
     loadUser() {
         const userStr = localStorage.getItem('rikim_user');
         if (userStr) {
@@ -18,8 +17,10 @@ class AuthService {
                 this.user = null;
             }
         }
-        // Always ensure staff_role is up‑to‑date from the token (if any)
-        this._mergeStaffRoleFromToken();
+        // Attempt to fill missing staff_role on page reload
+        if (this.user && this.user.role === 'staff' && !this.user.staff_role) {
+            this.fetchAndSaveStaffRole();
+        }
     }
 
     saveUser(user) {
@@ -30,36 +31,8 @@ class AuthService {
     saveToken(token) {
         this.token = token;
         localStorage.setItem('rikim_token', token);
-        // After saving a new token, immediately pull staff_role from it
-        this._mergeStaffRoleFromToken();
     }
 
-    // ---------- TOKEN DECODING ----------
-    _decodeTokenPayload() {
-        if (!this.token) return null;
-        try {
-            // JWT structure: header.payload.signature
-            const payloadBase64 = this.token.split('.')[1];
-            const payloadJson = atob(payloadBase64);
-            return JSON.parse(payloadJson);
-        } catch (e) {
-            return null;
-        }
-    }
-
-    _mergeStaffRoleFromToken() {
-        const payload = this._decodeTokenPayload();
-        if (payload && payload.staff_role) {
-            if (!this.user) {
-                this.user = {};
-            }
-            this.user.staff_role = payload.staff_role;
-            // Persist the updated user object so the next page load has it
-            localStorage.setItem('rikim_user', JSON.stringify(this.user));
-        }
-    }
-
-    // ---------- ROLE HELPERS ----------
     getRole() {
         return this.user?.role || null;
     }
@@ -72,13 +45,32 @@ class AuthService {
         return !!this.token && !!this.user;
     }
 
-    // ---------- AUTH ACTIONS ----------
+    // ----------------------------------------------------------
+    //  ENSURE staff_role IS PRESENT (called after login/setup)
+    // ----------------------------------------------------------
+    async fetchAndSaveStaffRole() {
+        if (!this.user || !this.user.phone) return;
+        try {
+            const response = await apiService.get(`/staff/members/by-phone/${this.user.phone}`);
+            if (response.success && response.data?.staff_role) {
+                this.user.staff_role = response.data.staff_role;
+                localStorage.setItem('rikim_user', JSON.stringify(this.user));
+                console.log('[AuthService] staff_role set to:', this.user.staff_role);
+            }
+        } catch (error) {
+            console.warn('[AuthService] Failed to fetch staff_role:', error);
+        }
+    }
+
     async login(phone, password) {
         const response = await apiService.post(CONFIG.ENDPOINTS.AUTH.LOGIN, { phone, password });
         if (response.success) {
             this.saveToken(response.data.token);
             this.saveUser(response.data.user);
-            // saveToken already calls _mergeStaffRoleFromToken, so staff_role is now set
+            // staff missing? fetch it automatically
+            if (this.user.role === 'staff' && !this.user.staff_role) {
+                await this.fetchAndSaveStaffRole();
+            }
         }
         return response;
     }
@@ -93,13 +85,15 @@ class AuthService {
         if (response.success) {
             this.saveToken(response.data.token);
             this.saveUser(response.data.user);
+            if (this.user.role === 'staff' && !this.user.staff_role) {
+                await this.fetchAndSaveStaffRole();
+            }
         }
         return response;
     }
 
     async register(userData) {
-        const response = await apiService.post(CONFIG.ENDPOINTS.AUTH.REGISTER, userData);
-        return response;
+        return apiService.post(CONFIG.ENDPOINTS.AUTH.REGISTER, userData);
     }
 
     async getProfile() {
