@@ -10,11 +10,11 @@ router.use(authenticate);
 // =============================================
 // TASKS
 // =============================================
-router.get('/tasks',          authorize('cleaner'), cleaningController.getMyTasks);
-router.get('/tasks/today',    authorize('cleaner'), cleaningController.getTodayTasks);
-router.get('/tasks/:id',      authorize('cleaner'), cleaningController.getTaskById);
-router.put('/tasks/:id/status', authorize('cleaner'), cleaningController.updateTaskStatus);
-router.put('/tasks/:id/accept', authorize('cleaner'), cleaningController.acceptMoveOutTask);
+router.get('/tasks',              authorize('cleaner'), cleaningController.getMyTasks);
+router.get('/tasks/today',        authorize('cleaner'), cleaningController.getTodayTasks);
+router.get('/tasks/:id',          authorize('cleaner'), cleaningController.getTaskById);
+router.put('/tasks/:id/status',   authorize('cleaner'), cleaningController.updateTaskStatus);
+router.put('/tasks/:id/accept',   authorize('cleaner'), cleaningController.acceptMoveOutTask);
 
 // =============================================
 // TEAM VIEW (other cleaners in same apartment)
@@ -32,6 +32,11 @@ router.get('/supplies/requests',      authorize('cleaner'), cleaningController.g
 // SALARY HISTORY
 // =============================================
 router.get('/salaries', authorize('cleaner'), cleaningController.getMySalaryHistory);
+
+// =============================================
+// CARETAKER INFO (for chat)
+// =============================================
+router.get('/caretaker', authorize('cleaner'), cleaningController.getMyCaretaker);
 
 // =============================================
 // MESSAGES WITH CARETAKER
