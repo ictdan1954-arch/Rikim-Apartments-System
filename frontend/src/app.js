@@ -1,6 +1,6 @@
 import { router } from './router.js';
 import { authService } from './services/auth.service.js';
-import { setupSidebar } from './components/sidebar.js';
+import { setupSidebar, updateSidebarUserInfo } from './components/sidebar.js';
 import { setupNotifications } from './components/notifications.js';
 
 // =============================================
@@ -28,9 +28,7 @@ router.addRoute('/dashboard', {
     component: () => import('./pages/dashboard/dashboard.js')
 });
 
-// =============================================
-// CLEANER DASHBOARD (NEW ROUTE)
-// =============================================
+// Cleaner Dashboard
 router.addRoute('/cleaning/dashboard', {
     title: 'Cleaner Dashboard',
     auth: true,
@@ -141,56 +139,42 @@ router.addRoute('/maintenance/tenant', {
 // APP INITIALIZATION
 // =============================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Setup sidebar
+    // Setup sidebar (menu + interactions)
     setupSidebar();
     
     // Setup notifications
     setupNotifications();
     
-    // Setup logout
-    document.getElementById('logout-btn').addEventListener('click', () => {
-        authService.logout();
-    });
+    // Setup logout button
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            authService.logout();
+        });
+    }
 
     // Handle sidebar toggle
-    document.getElementById('sidebar-toggle').addEventListener('click', () => {
-        document.getElementById('sidebar').classList.toggle('collapsed');
-    });
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+    }
 
-    // Handle mobile menu
-    document.getElementById('mobile-menu-btn').addEventListener('click', () => {
-        document.getElementById('sidebar').classList.toggle('open');
-    });
+    // Handle mobile menu button
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('open');
+        });
+    }
 
-    // Update user info in sidebar
-    updateUserInfo();
+    // Update user info in sidebar (safe to call even if not authenticated)
+    updateSidebarUserInfo();
     
-    // Start router
+    // Start the router
     router.handleRoute();
 });
-
-// =============================================
-// UPDATE USER INFO IN SIDEBAR
-// =============================================
-function updateUserInfo() {
-    const user = authService.user;
-    if (user) {
-        document.getElementById('user-name').textContent = user.full_name;
-        
-        // Display role: show 'Cleaner' if staff_role is cleaner, otherwise main role
-        let displayRole = user.role;
-        if (user.staff_role === 'cleaner') {
-            displayRole = 'Cleaner';
-        } else {
-            displayRole = user.role.charAt(0).toUpperCase() + user.role.slice(1);
-        }
-        document.getElementById('user-role').textContent = displayRole;
-        
-        if (user.profile_photo) {
-            document.getElementById('user-avatar').src = user.profile_photo;
-        }
-    }
-}
 
 // Export for global access
 window.router = router;
