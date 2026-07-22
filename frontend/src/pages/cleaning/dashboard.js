@@ -29,7 +29,7 @@ export default async function cleanerDashboard() {
 
             <!-- TEAM VIEW CARD -->
             <div class="card">
-                <div class="card-header">👥 My Team (${authService.user?.apartment})</div>
+                <div class="card-header">👥 My Team</div>
                 <div class="card-body" id="team-container">
                     <p>Loading team...</p>
                 </div>
@@ -47,13 +47,13 @@ export default async function cleanerDashboard() {
             <div class="card">
                 <div class="card-header">💬 Messages</div>
                 <div class="card-body" id="messages-container">
-                    <p>Loading messages...</p>
+                    <button id="open-chat-btn" class="btn btn-primary btn-sm">Chat with Caretaker</button>
                 </div>
             </div>
         </div>
     `;
 
-    // Fetch all data in parallel
+    // Fetch all data in parallel (each function handles its own errors)
     Promise.all([
         loadTasks(),
         loadSupplies(),
@@ -65,9 +65,9 @@ export default async function cleanerDashboard() {
 
 // ------------------- DATA FETCHES -------------------
 async function loadTasks() {
+    const container = document.getElementById('tasks-container');
     try {
-        const res = await apiService.get('/cleaning/tasks'); // GET /api/cleaning/tasks
-        const container = document.getElementById('tasks-container');
+        const res = await apiService.get('/cleaning/tasks');
         if (!res.success || !res.data.length) {
             container.innerHTML = '<p>No tasks assigned yet.</p>';
             return;
@@ -89,7 +89,7 @@ async function loadTasks() {
             </div>
         `).join('');
 
-        // Add event listeners for status change
+        // Attach event listeners for status change
         document.querySelectorAll('.status-select').forEach(select => {
             select.addEventListener('change', async (e) => {
                 const taskId = e.target.dataset.taskId;
@@ -103,14 +103,14 @@ async function loadTasks() {
             });
         });
     } catch (err) {
-        document.getElementById('tasks-container').innerHTML = '<p>Error loading tasks.</p>';
+        container.innerHTML = '<p>Error loading tasks. Please try again later.</p>';
     }
 }
 
 async function loadSupplies() {
+    const container = document.getElementById('supplies-container');
     try {
-        const res = await apiService.get('/cleaning/supplies'); // GET /api/cleaning/supplies
-        const container = document.getElementById('supplies-container');
+        const res = await apiService.get('/cleaning/supplies');
         if (!res.success || !res.data.length) {
             container.innerHTML = '<p>No supply data.</p>';
             return;
@@ -131,19 +131,18 @@ async function loadSupplies() {
             <button id="request-supply-btn" class="btn btn-sm btn-primary mt-2">Request Supplies</button>
         `;
 
-        document.getElementById('request-supply-btn').addEventListener('click', () => {
-            // Open a modal to request supplies (you can reuse your modal component)
+        document.getElementById('request-supply-btn')?.addEventListener('click', () => {
             showSupplyRequestModal();
         });
     } catch (err) {
-        document.getElementById('supplies-container').innerHTML = '<p>Error loading supplies.</p>';
+        container.innerHTML = '<p>Error loading supplies.</p>';
     }
 }
 
 async function loadTeam() {
+    const container = document.getElementById('team-container');
     try {
-        const res = await apiService.get('/cleaning/team'); // GET /api/cleaning/team
-        const container = document.getElementById('team-container');
+        const res = await apiService.get('/cleaning/team');
         if (!res.success || !res.data.length) {
             container.innerHTML = '<p>No other cleaners in this apartment.</p>';
             return;
@@ -155,14 +154,14 @@ async function loadTeam() {
             </div>
         `).join('');
     } catch (err) {
-        document.getElementById('team-container').innerHTML = '<p>Error loading team.</p>';
+        container.innerHTML = '<p>Error loading team.</p>';
     }
 }
 
 async function loadSalary() {
+    const container = document.getElementById('salary-container');
     try {
-        const res = await apiService.get('/staff/salaries/my'); // or use /cleaning/salaries
-        const container = document.getElementById('salary-container');
+        const res = await apiService.get('/cleaning/salaries');   // new endpoint
         if (!res.success || !res.data.length) {
             container.innerHTML = '<p>No salary payments recorded.</p>';
             return;
@@ -175,46 +174,42 @@ async function loadSalary() {
             </div>
         `).join('');
     } catch (err) {
-        document.getElementById('salary-container').innerHTML = '<p>Error loading salary.</p>';
+        container.innerHTML = '<p>Error loading salary.</p>';
     }
 }
 
 async function loadMessages() {
+    const container = document.getElementById('messages-container');
     try {
-        // Reuse the existing chat system – just load recent messages
-        const caretakerId = await getCaretakerId(); // You'll need to implement this
-        if (!caretakerId) {
-            document.getElementById('messages-container').innerHTML = '<p>No caretaker assigned.</p>';
+        const res = await apiService.get('/cleaning/caretaker');   // new endpoint
+        if (!res.success || !res.data) {
+            container.innerHTML = '<p>No caretaker assigned.</p>';
             return;
         }
-        // Just show a button to open chat; your existing chat modal can be used
-        document.getElementById('messages-container').innerHTML = `
-            <button id="open-chat-btn" class="btn btn-primary btn-sm">Chat with Caretaker</button>
+        const caretaker = res.data; // { user_id, users: { full_name } }
+        container.innerHTML = `
+            <button id="open-chat-btn" class="btn btn-primary btn-sm">Chat with Caretaker (${caretaker.users?.full_name || 'Caretaker'})</button>
         `;
-        document.getElementById('open-chat-btn').addEventListener('click', async () => {
+        document.getElementById('open-chat-btn')?.addEventListener('click', async () => {
             const { openChatModal } = await import('../../components/chat.js');
-            openChatModal(authService.user?.id, caretakerId, 'Caretaker');
+            openChatModal(authService.user?.id, caretaker.user_id, caretaker.users?.full_name);
         });
     } catch (err) {
-        document.getElementById('messages-container').innerHTML = '<p>Error loading messages.</p>';
+        container.innerHTML = '<p>Error loading caretaker info.</p>';
     }
-}
-
-async function getCaretakerId() {
-    // Get the apartment's caretaker(s) – similar to tenant message logic
-    try {
-        const res = await apiService.get('/apartments/my/caretakers'); // or use a known endpoint
-        if (res.success && res.data.length) return res.data[0].user_id;
-    } catch (e) {}
-    return null;
 }
 
 // Simple supply request modal (reuses your modal component)
 async function showSupplyRequestModal() {
     const { showFormModal } = await import('../../components/modal.js');
-    const supplies = await apiService.get('/cleaning/supplies');
-    const items = supplies.data || [];
-    const options = items.map(item => `<option value="${item.id}">${item.item_name} (${item.current_quantity} left)</option>`).join('');
+    let supplies;
+    try {
+        const res = await apiService.get('/cleaning/supplies');
+        supplies = res.success ? res.data : [];
+    } catch (e) {
+        supplies = [];
+    }
+    const options = supplies.map(item => `<option value="${item.id}">${item.item_name} (${item.current_quantity} left)</option>`).join('');
     const formHtml = `
         <div class="form-group">
             <label>Item</label>
@@ -228,12 +223,16 @@ async function showSupplyRequestModal() {
     showFormModal('Request Supplies', formHtml, async (overlay) => {
         const itemId = overlay.querySelector('#supply-item').value;
         const quantity = overlay.querySelector('#supply-quantity').value;
-        const itemName = items.find(i => i.id === itemId)?.item_name || '';
-        await apiService.post('/cleaning/supplies/request', {
-            supply_item_id: itemId,
-            item_name: itemName,
-            requested_quantity: parseInt(quantity)
-        });
-        showToast('Request sent to caretaker', 'success');
+        const itemName = supplies.find(i => i.id === itemId)?.item_name || '';
+        try {
+            await apiService.post('/cleaning/supplies/request', {
+                supply_item_id: itemId,
+                item_name: itemName,
+                requested_quantity: parseInt(quantity)
+            });
+            showToast('Request sent to caretaker', 'success');
+        } catch (err) {
+            showToast('Failed to send request', 'error');
+        }
     });
 }
