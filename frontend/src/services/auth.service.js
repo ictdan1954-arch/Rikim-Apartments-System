@@ -33,12 +33,25 @@ class AuthService {
         return this.user?.role || null;
     }
 
+    // =============================================
+    // GET STAFF ROLE (for cleaners, etc.)
+    // =============================================
+    getStaffRole() {
+        return this.user?.staff_role || null;
+    }
+
     isAuthenticated() {
         return !!this.token && !!this.user;
     }
 
-    async login(phone, password) {
-        const response = await apiService.post(CONFIG.ENDPOINTS.AUTH.LOGIN, { phone, password });
+    // =============================================
+    // UPDATED: Accepts identifier (phone, email, or username)
+    // =============================================
+    async login(identifier, password) {
+        const response = await apiService.post(CONFIG.ENDPOINTS.AUTH.LOGIN, { 
+            identifier,  // ← Changed from 'phone' to 'identifier'
+            password 
+        });
         if (response.success) {
             this.saveToken(response.data.token);
             this.saveUser(response.data.user);
@@ -73,11 +86,14 @@ class AuthService {
         return apiService.get(CONFIG.ENDPOINTS.AUTH.USERS);
     }
 
+    // =============================================
+    // FIXED: Consistent storage keys
+    // =============================================
     logout() {
         this.user = null;
         this.token = null;
-        localStorage.removeItem('bandaptai_token');
-        localStorage.removeItem('bandaptai_user');
+        localStorage.removeItem('rikim_token');   // ← Fixed
+        localStorage.removeItem('rikim_user');    // ← Fixed
         window.location.hash = '#/login';
         window.location.reload();
     }
