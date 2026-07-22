@@ -73,7 +73,7 @@ class Router {
         // Update page title
         if (route.title) {
             this.pageTitle.textContent = route.title;
-            document.title = `${route.title} - Bandaptai Apartments`;
+            document.title = `${route.title} - Rikims Apartments`;
         }
 
         // Show loading
