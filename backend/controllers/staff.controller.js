@@ -54,6 +54,63 @@ const staffController = {
         }
     },
 
+    // =============================================
+    // UPDATE ROLE (NEW - Fixes 404 error)
+    // =============================================
+    async updateRole(req, res) {
+        try {
+            const { id } = req.params;
+            const { role_name, description } = req.body;
+
+            // Validate required fields
+            if (!role_name) {
+                return ApiResponse.badRequest(res, 'Role name is required');
+            }
+
+            // Check if role exists
+            const { data: existingRole, error: checkError } = await supabase
+                .from('staff_roles')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (checkError || !existingRole) {
+                return ApiResponse.notFound(res, 'Staff role not found');
+            }
+
+            // Check if new role name conflicts with another role
+            const { data: duplicate, error: dupError } = await supabase
+                .from('staff_roles')
+                .select('id')
+                .eq('role_name', role_name)
+                .neq('id', id)
+                .single();
+
+            if (duplicate) {
+                return ApiResponse.badRequest(res, 'A role with this name already exists');
+            }
+
+            // Update the role
+            const { data: role, error } = await supabase
+                .from('staff_roles')
+                .update({
+                    role_name,
+                    description: description || null,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id)
+                .select('*')
+                .single();
+
+            if (error) throw error;
+
+            return ApiResponse.success(res, role, 'Staff role updated successfully');
+        } catch (error) {
+            console.error('Error updating role:', error);
+            return ApiResponse.error(res, 'Failed to update staff role');
+        }
+    },
+
     async deleteRole(req, res) {
         try {
             const { id } = req.params;
