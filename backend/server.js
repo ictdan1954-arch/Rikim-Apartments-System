@@ -18,7 +18,12 @@ const dashboardRoutes = require('./routes/dashboard.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const announcementRoutes = require('./routes/announcement.routes');
 const messageRoutes = require('./routes/message.routes');
-const uploadRoutes = require('./routes/upload.routes');               // NEW: profile photo upload
+const uploadRoutes = require('./routes/upload.routes');
+
+// =============================================
+// CLEANER ROUTES (NEW)
+// =============================================
+const cleaningRoutes = require('./routes/cleaning.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -60,7 +65,12 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/messages', messageRoutes);
-app.use('/api/upload', uploadRoutes);                                // NEW
+app.use('/api/upload', uploadRoutes);
+
+// =============================================
+// CLEANER API ROUTES (NEW)
+// =============================================
+app.use('/api/cleaning', cleaningRoutes);
 
 // =============================================
 // 404 HANDLER
