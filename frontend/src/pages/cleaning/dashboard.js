@@ -2,8 +2,8 @@ import { apiService } from '../../services/api.service.js';
 import { authService } from '../../services/auth.service.js';
 import { showToast } from '../../components/toast.js';
 
-export default async function cleanerDashboard() {
-    const container = document.getElementById('app');
+export default async function cleanerDashboard(container) {
+    // container = document.getElementById('page-content') (provided by the router)
     container.innerHTML = `
         <div class="page-header">
             <h2>🧹 Cleaning Dashboard</h2>
@@ -161,7 +161,7 @@ async function loadTeam() {
 async function loadSalary() {
     const container = document.getElementById('salary-container');
     try {
-        const res = await apiService.get('/cleaning/salaries');   // new endpoint
+        const res = await apiService.get('/cleaning/salaries');
         if (!res.success || !res.data.length) {
             container.innerHTML = '<p>No salary payments recorded.</p>';
             return;
@@ -181,12 +181,12 @@ async function loadSalary() {
 async function loadMessages() {
     const container = document.getElementById('messages-container');
     try {
-        const res = await apiService.get('/cleaning/caretaker');   // new endpoint
+        const res = await apiService.get('/cleaning/caretaker');
         if (!res.success || !res.data) {
             container.innerHTML = '<p>No caretaker assigned.</p>';
             return;
         }
-        const caretaker = res.data; // { user_id, users: { full_name } }
+        const caretaker = res.data;
         container.innerHTML = `
             <button id="open-chat-btn" class="btn btn-primary btn-sm">Chat with Caretaker (${caretaker.users?.full_name || 'Caretaker'})</button>
         `;
@@ -199,7 +199,6 @@ async function loadMessages() {
     }
 }
 
-// Simple supply request modal (reuses your modal component)
 async function showSupplyRequestModal() {
     const { showFormModal } = await import('../../components/modal.js');
     let supplies;
