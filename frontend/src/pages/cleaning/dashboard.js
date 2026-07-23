@@ -3,17 +3,18 @@ import { authService } from '../../services/auth.service.js';
 import { showToast } from '../../components/toast.js';
 
 export default async function cleanerDashboard(container) {
-    const hash = window.location.hash;                     // e.g. "#/cleaning/dashboard#tasks"
-    const sectionHash = hash.split('#').pop();            // "tasks", "supplies", etc.
+    const hash = window.location.hash;
+    const sectionHash = hash.split('#').pop();
     const section = ['tasks', 'supplies', 'salary', 'messages'].includes(sectionHash)
         ? sectionHash
         : null;
 
-    // ----- DEDICATED SINGLE-CARD VIEW (sidebar links) -----
+    // ----- DEDICATED VIEW (sidebar link) -----
     if (section) {
         container.innerHTML = `
-            <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
+            <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem;">
                 <a href="#/cleaning/dashboard" class="btn btn-sm btn-outline-secondary">← Back to Dashboard</a>
+                <span class="text-muted" style="text-transform:capitalize;">${section}</span>
             </div>
             <div id="section-content"></div>
         `;
@@ -23,13 +24,14 @@ export default async function cleanerDashboard(container) {
         return;
     }
 
-    // ----- DASHBOARD OVERVIEW (only summary cards, no details) -----
+    // ----- DASHBOARD OVERVIEW -----
     container.innerHTML = `
         <div class="page-header">
             <h2>🧹 Cleaning Dashboard</h2>
             <p class="text-muted">Welcome, ${authService.user?.full_name}</p>
         </div>
 
+        <!-- Quick Stats -->
         <div class="quick-stats">
             <div class="stat-card">
                 <i class="fas fa-tasks"></i>
@@ -48,31 +50,45 @@ export default async function cleanerDashboard(container) {
             </div>
         </div>
 
-        <div class="card" id="attendance">
-            <div class="card-header">🕒 Today's Attendance</div>
-            <div class="card-body" id="attendance-container"><p>Loading...</p></div>
+        <!-- Main Content Grid -->
+        <div class="dashboard-grid">
+            <!-- Attendance Card -->
+            <div class="card" id="attendance">
+                <div class="card-header">🕒 Today's Attendance</div>
+                <div class="card-body" id="attendance-container"><p>Loading…</p></div>
+            </div>
+
+            <!-- Announcements Card -->
+            <div class="card" id="announcements">
+                <div class="card-header">📢 Announcements</div>
+                <div class="card-body" id="announcements-container"><p>Loading…</p></div>
+            </div>
+
+            <!-- Team Card -->
+            <div class="card" id="team">
+                <div class="card-header">👥 My Team</div>
+                <div class="card-body" id="team-container"><p>Loading…</p></div>
+            </div>
         </div>
 
-        <div class="card" id="announcements">
-            <div class="card-header">📢 Announcements</div>
-            <div class="card-body" id="announcements-container"><p>Loading...</p></div>
-        </div>
-
-        <div class="card" id="team">
-            <div class="card-header">👥 My Team</div>
-            <div class="card-body" id="team-container"><p>Loading team...</p></div>
-        </div>
-
-        <!-- Quick links to dedicated sections -->
-        <div style="display:flex; gap:1rem; margin-top:1rem; flex-wrap:wrap;">
-            <a href="#/cleaning/dashboard#tasks" class="btn btn-outline-primary btn-sm">📋 View My Tasks</a>
-            <a href="#/cleaning/dashboard#supplies" class="btn btn-outline-primary btn-sm">🧴 View Supplies</a>
-            <a href="#/cleaning/dashboard#salary" class="btn btn-outline-primary btn-sm">💰 View Salary</a>
-            <a href="#/cleaning/dashboard#messages" class="btn btn-outline-primary btn-sm">💬 Messages</a>
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <a href="#/cleaning/dashboard#tasks" class="btn btn-outline-primary">
+                <i class="fas fa-tasks"></i> View My Tasks
+            </a>
+            <a href="#/cleaning/dashboard#supplies" class="btn btn-outline-primary">
+                <i class="fas fa-box"></i> View Supplies
+            </a>
+            <a href="#/cleaning/dashboard#salary" class="btn btn-outline-primary">
+                <i class="fas fa-money-bill-wave"></i> View Salary
+            </a>
+            <a href="#/cleaning/dashboard#messages" class="btn btn-outline-primary">
+                <i class="fas fa-envelope"></i> Messages
+            </a>
         </div>
     `;
 
-    // Load only overview data
+    // Load overview data
     await Promise.allSettled([
         loadAttendance(),
         loadAnnouncements(),
@@ -83,17 +99,17 @@ export default async function cleanerDashboard(container) {
     window.addEventListener('hashchange', () => cleanerDashboard(container), { once: true });
 }
 
-// ---------- HELPERS ----------
+// ---------- SINGLE-CARD HTML ----------
 function getCardHTML(section) {
     switch (section) {
         case 'tasks':
-            return `<div class="card" id="tasks"><div class="card-header">📋 My Tasks</div><div class="card-body" id="tasks-container"><p>Loading tasks...</p></div></div>`;
+            return `<div class="card"><div class="card-header">📋 My Tasks</div><div class="card-body" id="tasks-container"><p>Loading…</p></div></div>`;
         case 'supplies':
-            return `<div class="card" id="supplies"><div class="card-header">🧴 Supplies</div><div class="card-body" id="supplies-container"><p>Loading supplies...</p></div></div>`;
+            return `<div class="card"><div class="card-header">🧴 Supplies</div><div class="card-body" id="supplies-container"><p>Loading…</p></div></div>`;
         case 'salary':
-            return `<div class="card" id="salary"><div class="card-header">💰 My Salary</div><div class="card-body" id="salary-container"><p>Loading salary...</p></div></div>`;
+            return `<div class="card"><div class="card-header">💰 My Salary</div><div class="card-body" id="salary-container"><p>Loading…</p></div></div>`;
         case 'messages':
-            return `<div class="card" id="messages"><div class="card-header">💬 Messages</div><div class="card-body" id="messages-container"><button id="open-chat-btn" class="btn btn-primary btn-sm">Chat with Caretaker</button></div></div>`;
+            return `<div class="card"><div class="card-header">💬 Messages</div><div class="card-body" id="messages-container"><button id="open-chat-btn" class="btn btn-primary btn-sm">Chat with Caretaker</button></div></div>`;
         default:
             return '';
     }
@@ -108,7 +124,7 @@ async function loadSectionData(section) {
     }
 }
 
-// ---------- DATA FETCH FUNCTIONS (unchanged, except they now only run when section is present) ----------
+// ---------- DATA FETCH FUNCTIONS ----------
 async function loadAttendance() {
     const container = document.getElementById('attendance-container');
     if (!container) return;
