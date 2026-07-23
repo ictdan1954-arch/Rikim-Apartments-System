@@ -9,60 +9,166 @@ export default async function cleanerDashboard(container) {
             <p class="text-muted">Welcome, ${authService.user?.full_name}</p>
         </div>
 
-        <div class="dashboard-grid">
-            <!-- MY TASKS CARD -->
-            <div class="card" id="tasks">
-                <div class="card-header">📋 My Tasks</div>
-                <div class="card-body" id="tasks-container">
-                    <p>Loading tasks...</p>
-                </div>
+        <!-- QUICK STATS ROW -->
+        <div class="quick-stats">
+            <div class="stat-card">
+                <i class="fas fa-tasks"></i>
+                <span class="stat-value" id="stat-tasks">0</span>
+                <span class="stat-label">Tasks Today</span>
             </div>
-
-            <!-- SUPPLIES CARD -->
-            <div class="card" id="supplies">
-                <div class="card-header">🧴 Supplies</div>
-                <div class="card-body" id="supplies-container">
-                    <p>Loading supplies...</p>
-                </div>
+            <div class="stat-card">
+                <i class="fas fa-clock"></i>
+                <span class="stat-value" id="stat-checkin">--:--</span>
+                <span class="stat-label">Check‑In</span>
             </div>
-
-            <!-- TEAM VIEW CARD -->
-            <div class="card" id="team">
-                <div class="card-header">👥 My Team</div>
-                <div class="card-body" id="team-container">
-                    <p>Loading team...</p>
-                </div>
+            <div class="stat-card">
+                <i class="fas fa-bell"></i>
+                <span class="stat-value" id="stat-announcements">0</span>
+                <span class="stat-label">Announcements</span>
             </div>
+        </div>
 
-            <!-- SALARY CARD -->
-            <div class="card" id="salary">
-                <div class="card-header">💰 My Salary</div>
-                <div class="card-body" id="salary-container">
-                    <p>Loading salary...</p>
-                </div>
+        <!-- ATTENDANCE CARD -->
+        <div class="card" id="attendance">
+            <div class="card-header">🕒 Today's Attendance</div>
+            <div class="card-body" id="attendance-container">
+                <p>Loading...</p>
             </div>
+        </div>
 
-            <!-- MESSAGES CARD -->
-            <div class="card" id="messages">
-                <div class="card-header">💬 Messages</div>
-                <div class="card-body" id="messages-container">
-                    <button id="open-chat-btn" class="btn btn-primary btn-sm">Chat with Caretaker</button>
-                </div>
+        <!-- ANNOUNCEMENTS CARD -->
+        <div class="card" id="announcements">
+            <div class="card-header">📢 Announcements</div>
+            <div class="card-body" id="announcements-container">
+                <p>Loading...</p>
+            </div>
+        </div>
+
+        <!-- MY TASKS CARD -->
+        <div class="card" id="tasks">
+            <div class="card-header">📋 My Tasks</div>
+            <div class="card-body" id="tasks-container">
+                <p>Loading tasks...</p>
+            </div>
+        </div>
+
+        <!-- SUPPLIES CARD -->
+        <div class="card" id="supplies">
+            <div class="card-header">🧴 Supplies</div>
+            <div class="card-body" id="supplies-container">
+                <p>Loading supplies...</p>
+            </div>
+        </div>
+
+        <!-- TEAM VIEW CARD -->
+        <div class="card" id="team">
+            <div class="card-header">👥 My Team</div>
+            <div class="card-body" id="team-container">
+                <p>Loading team...</p>
+            </div>
+        </div>
+
+        <!-- SALARY CARD -->
+        <div class="card" id="salary">
+            <div class="card-header">💰 My Salary</div>
+            <div class="card-body" id="salary-container">
+                <p>Loading salary...</p>
+            </div>
+        </div>
+
+        <!-- MESSAGES CARD -->
+        <div class="card" id="messages">
+            <div class="card-header">💬 Messages</div>
+            <div class="card-body" id="messages-container">
+                <button id="open-chat-btn" class="btn btn-primary btn-sm">Chat with Caretaker</button>
             </div>
         </div>
     `;
 
-    // Fetch all data in parallel (each function handles its own errors)
+    // Load all sections in parallel
     Promise.all([
+        loadAttendance(),
+        loadAnnouncements(),
         loadTasks(),
         loadSupplies(),
         loadTeam(),
         loadSalary(),
-        loadMessages()
+        loadMessages(),
+        updateQuickStats()
     ]).catch(err => console.error('Dashboard load error:', err));
 }
 
-// ------------------- DATA FETCHES -------------------
+// ------------------- ATTENDANCE -------------------
+async function loadAttendance() {
+    const container = document.getElementById('attendance-container');
+    const today = new Date().toLocaleDateString('en-KE', { weekday: 'long', day: 'numeric', month: 'long' });
+    container.innerHTML = `
+        <div class="attendance-row">
+            <div class="attendance-item">
+                <span class="label">Check‑In</span>
+                <span class="value" id="checkin-time">--:--</span>
+                <button id="checkin-btn" class="btn btn-sm btn-success">Check In</button>
+            </div>
+            <div class="attendance-item">
+                <span class="label">Check‑Out</span>
+                <span class="value" id="checkout-time">--:--</span>
+                <button id="checkout-btn" class="btn btn-sm btn-outline-danger" disabled>Check Out</button>
+            </div>
+            <div class="attendance-item">
+                <span class="label">Date</span>
+                <span class="value">${today}</span>
+            </div>
+        </div>
+    `;
+
+    let checkinTime = localStorage.getItem('cleaner_checkin_today');
+    if (checkinTime) {
+        document.getElementById('checkin-time').textContent = checkinTime;
+        document.getElementById('checkin-btn').disabled = true;
+        document.getElementById('checkout-btn').disabled = false;
+    }
+
+    document.getElementById('checkin-btn')?.addEventListener('click', () => {
+        const now = new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('checkin-time').textContent = now;
+        localStorage.setItem('cleaner_checkin_today', now);
+        document.getElementById('checkin-btn').disabled = true;
+        document.getElementById('checkout-btn').disabled = false;
+        updateQuickStats();
+        showToast('Checked in successfully', 'success');
+    });
+
+    document.getElementById('checkout-btn')?.addEventListener('click', () => {
+        const now = new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
+        document.getElementById('checkout-time').textContent = now;
+        document.getElementById('checkout-btn').disabled = true;
+        showToast('Checked out. See you tomorrow!', 'success');
+    });
+}
+
+// ------------------- ANNOUNCEMENTS (placeholder data) -------------------
+async function loadAnnouncements() {
+    const container = document.getElementById('announcements-container');
+    // TODO: Replace with real API call (e.g., /cleaning/announcements)
+    const announcements = [
+        { date: '2026-07-22', message: 'Deep cleaning of Block B verandahs required this Friday.', priority: 'high' },
+        { date: '2026-07-21', message: 'New cleaning supplies will be delivered on Monday.', priority: 'normal' },
+        { date: '2026-07-20', message: 'Please remember to log your hours daily.', priority: 'normal' }
+    ];
+
+    if (!announcements.length) {
+        container.innerHTML = '<p>No announcements.</p>';
+        return;
+    }
+    container.innerHTML = announcements.map(a => `
+        <div class="announcement-item ${a.priority}">
+            <span class="announcement-date">${new Date(a.date).toLocaleDateString('en-KE')}</span>
+            <p>${a.message}</p>
+        </div>
+    `).join('');
+}
+
+// ------------------- TASKS (existing) -------------------
 async function loadTasks() {
     const container = document.getElementById('tasks-container');
     try {
@@ -105,6 +211,7 @@ async function loadTasks() {
     }
 }
 
+// ------------------- SUPPLIES (existing) -------------------
 async function loadSupplies() {
     const container = document.getElementById('supplies-container');
     try {
@@ -137,6 +244,7 @@ async function loadSupplies() {
     }
 }
 
+// ------------------- TEAM (existing) -------------------
 async function loadTeam() {
     const container = document.getElementById('team-container');
     try {
@@ -156,6 +264,7 @@ async function loadTeam() {
     }
 }
 
+// ------------------- SALARY (existing) -------------------
 async function loadSalary() {
     const container = document.getElementById('salary-container');
     try {
@@ -176,6 +285,7 @@ async function loadSalary() {
     }
 }
 
+// ------------------- MESSAGES (existing) -------------------
 async function loadMessages() {
     const container = document.getElementById('messages-container');
     try {
@@ -197,6 +307,24 @@ async function loadMessages() {
     }
 }
 
+// ------------------- QUICK STATS -------------------
+async function updateQuickStats() {
+    try {
+        const res = await apiService.get('/cleaning/tasks');
+        const taskCount = res.success ? res.data.filter(t => t.status !== 'completed').length : 0;
+        document.getElementById('stat-tasks').textContent = taskCount;
+    } catch (e) {
+        document.getElementById('stat-tasks').textContent = '?';
+    }
+
+    const checkin = localStorage.getItem('cleaner_checkin_today');
+    document.getElementById('stat-checkin').textContent = checkin || '--:--';
+
+    // Placeholder – replace with real count from API
+    document.getElementById('stat-announcements').textContent = 3;
+}
+
+// ------------------- SUPPLY REQUEST MODAL (existing) -------------------
 async function showSupplyRequestModal() {
     const { showFormModal } = await import('../../components/modal.js');
     let supplies;
