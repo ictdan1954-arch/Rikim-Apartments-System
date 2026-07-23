@@ -9,42 +9,47 @@ let hashChangeBound = false;
 // PUBLIC: SETUP SIDEBAR (menu + interactivity)
 // =============================================
 export async function setupSidebar() {
-    if (!authService.isAuthenticated()) {
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar) sidebar.style.display = 'none';
-        return;
-    }
-
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
-    sidebar.style.display = 'flex';
 
-    // ---------- ENSURE staff_role IS AVAILABLE ----------
+    // Always show the sidebar container if authenticated
+    if (!authService.isAuthenticated()) {
+        sidebar.style.display = 'none';
+        return;
+    }
+    sidebar.style.setProperty('display', 'flex', 'important');
+
+    // ---------- ENSURE staff_role ----------
     let role = authService.getRole();
     let staffRole = authService.getStaffRole();
+
+    console.log('[SIDEBAR] role:', role, 'staffRole:', staffRole);
 
     if (role === 'staff' && !staffRole) {
         try {
             const phone = authService.user.phone;
             const response = await apiService.get(`/staff/members/by-phone/${phone}`);
+            console.log('[SIDEBAR] by-phone response:', response);
             if (response.success && response.data?.staff_role) {
                 staffRole = response.data.staff_role.toLowerCase();
                 authService.user.staff_role = staffRole;
                 localStorage.setItem('rikim_user', JSON.stringify(authService.user));
             }
         } catch (e) {
-            console.warn('Could not fetch staff_role, using generic staff menu');
+            console.warn('[SIDEBAR] by-phone fetch failed:', e);
         }
     } else if (staffRole) {
         staffRole = staffRole.toLowerCase();
     }
 
+    // Override role for known sub‑roles
     const knownSubRoles = ['cleaner', 'electrician', 'plumber', 'gardener'];
     if (role === 'staff' && staffRole && knownSubRoles.includes(staffRole)) {
         role = staffRole;
     }
+    console.log('[SIDEBAR] Final role for menu:', role);
 
-    // ----- CREATE SIDEBAR NAV IF IT DOESN'T EXIST -----
+    // Ensure navigation container exists
     let nav = document.getElementById('sidebar-nav');
     if (!nav) {
         nav = document.createElement('nav');
@@ -52,8 +57,14 @@ export async function setupSidebar() {
         sidebar.appendChild(nav);
     }
 
+    // Build menu (no generic staff fallback)
     const menuItems = getMenuItems(role);
-    renderNav(nav, menuItems);
+    if (menuItems.length === 0) {
+        // Unknown sub‑role or missing role → show a message but keep sidebar visible
+        nav.innerHTML = '<div style="padding:20px; color:#fff;">No menu available for this role.</div>';
+    } else {
+        renderNav(nav, menuItems);
+    }
 
     // ----- Caretaker apartments -----
     if (role === 'caretaker') {
@@ -148,10 +159,10 @@ export function updateSidebarUserInfo() {
 }
 
 // =============================================
-// PRIVATE: MENU DEFINITIONS
+// PRIVATE: MENU DEFINITIONS (NO GENERIC STAFF)
 // =============================================
 function getMenuItems(role) {
-    // ---------- SUB‑ROLE MENUS ----------
+    // Cleaner
     if (role === 'cleaner') {
         return [
             { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/cleaning/dashboard' }] },
@@ -164,6 +175,7 @@ function getMenuItems(role) {
         ];
     }
 
+    // Electrician
     if (role === 'electrician') {
         return [
             { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/electrician/dashboard' }] },
@@ -176,6 +188,7 @@ function getMenuItems(role) {
         ];
     }
 
+    // Plumber
     if (role === 'plumber') {
         return [
             { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/plumber/dashboard' }] },
@@ -188,6 +201,7 @@ function getMenuItems(role) {
         ];
     }
 
+    // Gardener
     if (role === 'gardener') {
         return [
             { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/gardener/dashboard' }] },
@@ -200,70 +214,65 @@ function getMenuItems(role) {
         ];
     }
 
-    // ---------- MAIN ROLE MENUS ----------
-    const landlordMenu = [
-        { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/dashboard' }] },
-        { section: 'PROPERTIES', items: [
-            { icon: 'fa-building', text: 'Apartments', href: '/apartments' },
-            { icon: 'fa-door-open', text: 'Units', href: '/units/all' }
-        ]},
-        { section: 'PEOPLE', items: [
-            { icon: 'fa-users', text: 'Tenants', href: '/tenants' },
-            { icon: 'fa-user-tie', text: 'Staff Roles', href: '/staff/roles' },
-            { icon: 'fa-user-friends', text: 'Staff Members', href: '/staff/members' }
-        ]},
-        { section: 'FINANCES', items: [
-            { icon: 'fa-money-bill-wave', text: 'Rent Payments', href: '/payments/rent' },
-            { icon: 'fa-hand-holding-usd', text: 'Staff Salaries', href: '/payments/salaries' },
-            { icon: 'fa-receipt', text: 'Expenses', href: '/expenses' }
-        ]},
-        { section: 'MANAGEMENT', items: [
-            { icon: 'fa-tools', text: 'Maintenance', href: '/maintenance' }
-        ]}
-    ];
+    // Landlord
+    if (role === 'landlord') {
+        return [
+            { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/dashboard' }] },
+            { section: 'PROPERTIES', items: [
+                { icon: 'fa-building', text: 'Apartments', href: '/apartments' },
+                { icon: 'fa-door-open', text: 'Units', href: '/units/all' }
+            ]},
+            { section: 'PEOPLE', items: [
+                { icon: 'fa-users', text: 'Tenants', href: '/tenants' },
+                { icon: 'fa-user-tie', text: 'Staff Roles', href: '/staff/roles' },
+                { icon: 'fa-user-friends', text: 'Staff Members', href: '/staff/members' }
+            ]},
+            { section: 'FINANCES', items: [
+                { icon: 'fa-money-bill-wave', text: 'Rent Payments', href: '/payments/rent' },
+                { icon: 'fa-hand-holding-usd', text: 'Staff Salaries', href: '/payments/salaries' },
+                { icon: 'fa-receipt', text: 'Expenses', href: '/expenses' }
+            ]},
+            { section: 'MANAGEMENT', items: [
+                { icon: 'fa-tools', text: 'Maintenance', href: '/maintenance' }
+            ]}
+        ];
+    }
 
-    const caretakerMenu = [
-        { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/dashboard' }] },
-        { section: 'PROPERTIES', items: [
-            { icon: 'fa-building', text: 'My Apartments', href: '/apartments' }
-        ]},
-        { section: 'PEOPLE', items: [
-            { icon: 'fa-users', text: 'Tenants', href: '/tenants' },
-            { icon: 'fa-user-friends', text: 'Staff Members', href: '/staff/members' }
-        ]},
-        { section: 'FINANCES', items: [
-            { icon: 'fa-money-bill-wave', text: 'Rent Payments', href: '/payments/rent' },
-            { icon: 'fa-hand-holding-usd', text: 'Staff Salaries', href: '/payments/salaries' },
-            { icon: 'fa-receipt', text: 'Expenses', href: '/expenses' }
-        ]},
-        { section: 'MANAGEMENT', items: [
-            { icon: 'fa-tools', text: 'Maintenance', href: '/maintenance' }
-        ]}
-    ];
+    // Caretaker
+    if (role === 'caretaker') {
+        return [
+            { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/dashboard' }] },
+            { section: 'PROPERTIES', items: [
+                { icon: 'fa-building', text: 'My Apartments', href: '/apartments' }
+            ]},
+            { section: 'PEOPLE', items: [
+                { icon: 'fa-users', text: 'Tenants', href: '/tenants' },
+                { icon: 'fa-user-friends', text: 'Staff Members', href: '/staff/members' }
+            ]},
+            { section: 'FINANCES', items: [
+                { icon: 'fa-money-bill-wave', text: 'Rent Payments', href: '/payments/rent' },
+                { icon: 'fa-hand-holding-usd', text: 'Staff Salaries', href: '/payments/salaries' },
+                { icon: 'fa-receipt', text: 'Expenses', href: '/expenses' }
+            ]},
+            { section: 'MANAGEMENT', items: [
+                { icon: 'fa-tools', text: 'Maintenance', href: '/maintenance' }
+            ]}
+        ];
+    }
 
-    const tenantMenu = [
-        { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/dashboard' }] },
-        { section: 'MY STUFF', items: [
-            { icon: 'fa-history', text: 'Payment History', href: '/tenants/my' },
-            { icon: 'fa-tools', text: 'Maintenance', href: '/maintenance/tenant' },
-            { icon: 'fa-envelope', text: 'Messages', href: '/messages' }
-        ]}
-    ];
+    // Tenant
+    if (role === 'tenant') {
+        return [
+            { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/dashboard' }] },
+            { section: 'MY STUFF', items: [
+                { icon: 'fa-history', text: 'Payment History', href: '/tenants/my' },
+                { icon: 'fa-tools', text: 'Maintenance', href: '/maintenance/tenant' },
+                { icon: 'fa-envelope', text: 'Messages', href: '/messages' }
+            ]}
+        ];
+    }
 
-    const staffMenu = [
-        { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/dashboard' }] },
-        { section: 'MY WORK', items: [
-            { icon: 'fa-history', text: 'My Salary', href: '/dashboard' },
-            { icon: 'fa-tasks', text: 'My Tasks', href: '/dashboard' },
-            { icon: 'fa-bullhorn', text: 'Announcements', href: '/dashboard' }
-        ]}
-    ];
-
-    // Fallback order
-    if (role === 'landlord') return landlordMenu;
-    if (role === 'caretaker') return caretakerMenu;
-    if (role === 'tenant') return tenantMenu;
-    if (role === 'staff') return staffMenu;
+    // Unknown role (including generic 'staff' without known sub‑role)
     return [];
 }
 
