@@ -5,15 +5,17 @@ import { setupSidebar } from '../components/sidebar.js';
 
 export default async function loginPage() {
     // =============================================
-    // EARLY EXIT: USER ALREADY LOGGED IN
-    //   Uses direct token+user check to avoid a
-    //   split-second race when reading from storage.
+    // EARLY EXIT – check localStorage synchronously
+    // This prevents the overlay from ever being created
+    // if the user is already logged in (e.g. hard refresh).
     // =============================================
-    if (authService.token && authService.user) {
+    const token = localStorage.getItem('rikim_token');
+    const user = localStorage.getItem('rikim_user');
+    if (token && user) {
         const app = document.getElementById('app');
-        if (app) app.style.display = '';
+        if (app) app.style.display = '';   // ensure app is visible
         router.navigateByRole();
-        setupSidebar().catch(err => console.error('Sidebar setup error:', err));
+        setupSidebar().catch(err => console.error(err));
         return;   // stop – do NOT create the login overlay
     }
 
