@@ -12,7 +12,6 @@ export async function setupSidebar() {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
 
-    // Always show the sidebar container if authenticated
     if (!authService.isAuthenticated()) {
         sidebar.style.display = 'none';
         return;
@@ -23,13 +22,10 @@ export async function setupSidebar() {
     let role = authService.getRole();
     let staffRole = authService.getStaffRole();
 
-    console.log('[SIDEBAR] role:', role, 'staffRole:', staffRole);
-
     if (role === 'staff' && !staffRole) {
         try {
             const phone = authService.user.phone;
             const response = await apiService.get(`/staff/members/by-phone/${phone}`);
-            console.log('[SIDEBAR] by-phone response:', response);
             if (response.success && response.data?.staff_role) {
                 staffRole = response.data.staff_role.toLowerCase();
                 authService.user.staff_role = staffRole;
@@ -42,12 +38,10 @@ export async function setupSidebar() {
         staffRole = staffRole.toLowerCase();
     }
 
-    // Override role for known sub‑roles
     const knownSubRoles = ['cleaner', 'electrician', 'plumber', 'gardener'];
     if (role === 'staff' && staffRole && knownSubRoles.includes(staffRole)) {
         role = staffRole;
     }
-    console.log('[SIDEBAR] Final role for menu:', role);
 
     // Ensure navigation container exists
     let nav = document.getElementById('sidebar-nav');
@@ -57,10 +51,8 @@ export async function setupSidebar() {
         sidebar.appendChild(nav);
     }
 
-    // Build menu (no generic staff fallback)
     const menuItems = getMenuItems(role);
     if (menuItems.length === 0) {
-        // Unknown sub‑role or missing role → show a message but keep sidebar visible
         nav.innerHTML = '<div style="padding:20px; color:#fff;">No menu available for this role.</div>';
     } else {
         renderNav(nav, menuItems);
@@ -159,18 +151,20 @@ export function updateSidebarUserInfo() {
 }
 
 // =============================================
-// PRIVATE: MENU DEFINITIONS (NO GENERIC STAFF)
+// PRIVATE: MENU DEFINITIONS
 // =============================================
 function getMenuItems(role) {
-    // Cleaner
+    // Cleaner – links now point to section IDs within the dashboard
     if (role === 'cleaner') {
         return [
-            { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/cleaning/dashboard' }] },
+            { section: 'MAIN', items: [
+                { icon: 'fa-th-large', text: 'Dashboard', href: '/cleaning/dashboard' }
+            ]},
             { section: 'MY WORK', items: [
-                { icon: 'fa-tasks', text: 'My Tasks', href: '/cleaning/dashboard' },
-                { icon: 'fa-box', text: 'Supplies', href: '/cleaning/dashboard' },
-                { icon: 'fa-history', text: 'My Salary', href: '/cleaning/dashboard' },
-                { icon: 'fa-envelope', text: 'Messages', href: '/cleaning/dashboard' }
+                { icon: 'fa-tasks', text: 'My Tasks', href: '#tasks' },
+                { icon: 'fa-box', text: 'Supplies', href: '#supplies' },
+                { icon: 'fa-history', text: 'My Salary', href: '#salary' },
+                { icon: 'fa-envelope', text: 'Messages', href: '#messages' }
             ]}
         ];
     }
@@ -180,10 +174,10 @@ function getMenuItems(role) {
         return [
             { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/electrician/dashboard' }] },
             { section: 'MY WORK', items: [
-                { icon: 'fa-tasks', text: 'My Tasks', href: '/electrician/dashboard' },
-                { icon: 'fa-tools', text: 'Supplies', href: '/electrician/dashboard' },
-                { icon: 'fa-history', text: 'My Salary', href: '/electrician/dashboard' },
-                { icon: 'fa-envelope', text: 'Messages', href: '/electrician/dashboard' }
+                { icon: 'fa-tasks', text: 'My Tasks', href: '#tasks' },
+                { icon: 'fa-tools', text: 'Supplies', href: '#supplies' },
+                { icon: 'fa-history', text: 'My Salary', href: '#salary' },
+                { icon: 'fa-envelope', text: 'Messages', href: '#messages' }
             ]}
         ];
     }
@@ -193,10 +187,10 @@ function getMenuItems(role) {
         return [
             { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/plumber/dashboard' }] },
             { section: 'MY WORK', items: [
-                { icon: 'fa-tasks', text: 'My Tasks', href: '/plumber/dashboard' },
-                { icon: 'fa-wrench', text: 'Supplies', href: '/plumber/dashboard' },
-                { icon: 'fa-history', text: 'My Salary', href: '/plumber/dashboard' },
-                { icon: 'fa-envelope', text: 'Messages', href: '/plumber/dashboard' }
+                { icon: 'fa-tasks', text: 'My Tasks', href: '#tasks' },
+                { icon: 'fa-wrench', text: 'Supplies', href: '#supplies' },
+                { icon: 'fa-history', text: 'My Salary', href: '#salary' },
+                { icon: 'fa-envelope', text: 'Messages', href: '#messages' }
             ]}
         ];
     }
@@ -206,10 +200,10 @@ function getMenuItems(role) {
         return [
             { section: 'MAIN', items: [{ icon: 'fa-th-large', text: 'Dashboard', href: '/gardener/dashboard' }] },
             { section: 'MY WORK', items: [
-                { icon: 'fa-tasks', text: 'My Tasks', href: '/gardener/dashboard' },
-                { icon: 'fa-seedling', text: 'Supplies', href: '/gardener/dashboard' },
-                { icon: 'fa-history', text: 'My Salary', href: '/gardener/dashboard' },
-                { icon: 'fa-envelope', text: 'Messages', href: '/gardener/dashboard' }
+                { icon: 'fa-tasks', text: 'My Tasks', href: '#tasks' },
+                { icon: 'fa-seedling', text: 'Supplies', href: '#supplies' },
+                { icon: 'fa-history', text: 'My Salary', href: '#salary' },
+                { icon: 'fa-envelope', text: 'Messages', href: '#messages' }
             ]}
         ];
     }
@@ -272,7 +266,7 @@ function getMenuItems(role) {
         ];
     }
 
-    // Unknown role (including generic 'staff' without known sub‑role)
+    // Unknown role
     return [];
 }
 
@@ -287,7 +281,7 @@ function renderNav(container, menuItems) {
             <div class="nav-section-title">${section.section}</div>`;
         section.items.forEach(item => {
             html += `
-                <a class="nav-link" href="#${item.href}" data-href="${item.href}">
+                <a class="nav-link" href="${item.href.startsWith('#') ? item.href : '#' + item.href}" data-href="${item.href}">
                     <i class="fas ${item.icon}"></i>
                     <span class="nav-text">${item.text}</span>
                 </a>`;
@@ -305,11 +299,9 @@ function updateActiveLink() {
     document.querySelectorAll('.nav-link').forEach(link => {
         const href = link.dataset.href;
         link.classList.remove('active');
-        if (currentHash.startsWith(href) || (href === '/dashboard' && currentHash === '/dashboard')) {
-            link.classList.add('active');
-        }
-        const subRoleDashboards = ['/cleaning/dashboard', '/electrician/dashboard', '/plumber/dashboard', '/gardener/dashboard'];
-        if (subRoleDashboards.includes(href) && currentHash.startsWith(href)) {
+        if (href && (currentHash.startsWith(href) || 
+            (href === '/dashboard' && currentHash === '/dashboard') ||
+            (href.startsWith('#') && window.location.hash === href))) {
             link.classList.add('active');
         }
     });
