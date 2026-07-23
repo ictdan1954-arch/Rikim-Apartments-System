@@ -3,11 +3,13 @@ import { authService } from '../../services/auth.service.js';
 import { showToast } from '../../components/toast.js';
 
 export default async function cleanerDashboard(container) {
-    const hash = window.location.hash;
-    const sectionHash = hash.split('#').pop();
-    const section = ['tasks', 'supplies', 'salary', 'messages'].includes(sectionHash) ? sectionHash : null;
+    const hash = window.location.hash;                     // e.g. "#/cleaning/dashboard#tasks"
+    const sectionHash = hash.split('#').pop();            // "tasks", "supplies", etc.
+    const section = ['tasks', 'supplies', 'salary', 'messages'].includes(sectionHash)
+        ? sectionHash
+        : null;
 
-    // If a specific section is requested, show only that card with a back button
+    // ----- SINGLE-CARD VIEW -----
     if (section) {
         container.innerHTML = `
             <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
@@ -17,11 +19,12 @@ export default async function cleanerDashboard(container) {
         `;
         document.getElementById('section-content').innerHTML = getCardHTML(section);
         await loadSectionData(section);
+        // Listen for the next hash change so the "Back" button works
         window.addEventListener('hashchange', () => cleanerDashboard(container), { once: true });
         return;
     }
 
-    // ----- Full dashboard layout -----
+    // ----- FULL DASHBOARD -----
     container.innerHTML = `
         <div class="page-header">
             <h2>🧹 Cleaning Dashboard</h2>
@@ -84,7 +87,6 @@ export default async function cleanerDashboard(container) {
         </div>
     `;
 
-    // Load all sections in parallel
     await Promise.allSettled([
         loadAttendance(),
         loadAnnouncements(),
@@ -96,17 +98,23 @@ export default async function cleanerDashboard(container) {
         updateQuickStats()
     ]);
 
+    // Same hashchange listener to handle "Back to Dashboard" from a single-card view
     window.addEventListener('hashchange', () => cleanerDashboard(container), { once: true });
 }
 
-// ---------- SECTION-ONLY HELPERS ----------
+// ---------- Helpers for single-card view ----------
 function getCardHTML(section) {
     switch (section) {
-        case 'tasks':    return `<div class="card" id="tasks"><div class="card-header">📋 My Tasks</div><div class="card-body" id="tasks-container"><p>Loading tasks...</p></div></div>`;
-        case 'supplies': return `<div class="card" id="supplies"><div class="card-header">🧴 Supplies</div><div class="card-body" id="supplies-container"><p>Loading supplies...</p></div></div>`;
-        case 'salary':   return `<div class="card" id="salary"><div class="card-header">💰 My Salary</div><div class="card-body" id="salary-container"><p>Loading salary...</p></div></div>`;
-        case 'messages': return `<div class="card" id="messages"><div class="card-header">💬 Messages</div><div class="card-body" id="messages-container"><button id="open-chat-btn" class="btn btn-primary btn-sm">Chat with Caretaker</button></div></div>`;
-        default: return '';
+        case 'tasks':
+            return `<div class="card" id="tasks"><div class="card-header">📋 My Tasks</div><div class="card-body" id="tasks-container"><p>Loading tasks...</p></div></div>`;
+        case 'supplies':
+            return `<div class="card" id="supplies"><div class="card-header">🧴 Supplies</div><div class="card-body" id="supplies-container"><p>Loading supplies...</p></div></div>`;
+        case 'salary':
+            return `<div class="card" id="salary"><div class="card-header">💰 My Salary</div><div class="card-body" id="salary-container"><p>Loading salary...</p></div></div>`;
+        case 'messages':
+            return `<div class="card" id="messages"><div class="card-header">💬 Messages</div><div class="card-body" id="messages-container"><button id="open-chat-btn" class="btn btn-primary btn-sm">Chat with Caretaker</button></div></div>`;
+        default:
+            return '';
     }
 }
 
@@ -119,7 +127,7 @@ async function loadSectionData(section) {
     }
 }
 
-// ---------- DATA FETCH FUNCTIONS ----------
+// ---------- Data fetching functions (identical to your current ones) ----------
 async function loadAttendance() {
     const container = document.getElementById('attendance-container');
     if (!container) return;
@@ -168,7 +176,6 @@ async function loadAttendance() {
 async function loadAnnouncements() {
     const container = document.getElementById('announcements-container');
     if (!container) return;
-    // Placeholder data – replace with API call
     const announcements = [
         { date: '2026-07-22', message: 'Deep cleaning of Block B verandahs required this Friday.', priority: 'high' },
         { date: '2026-07-21', message: 'New cleaning supplies will be delivered on Monday.', priority: 'normal' },
@@ -357,7 +364,11 @@ async function showSupplyRequestModal() {
         const quantity = overlay.querySelector('#supply-quantity').value;
         const itemName = supplies.find(i => i.id === itemId)?.item_name || '';
         try {
-            await apiService.post('/cleaning/supplies/request', { supply_item_id: itemId, item_name: itemName, requested_quantity: parseInt(quantity) });
+            await apiService.post('/cleaning/supplies/request', {
+                supply_item_id: itemId,
+                item_name: itemName,
+                requested_quantity: parseInt(quantity)
+            });
             showToast('Request sent to caretaker', 'success');
         } catch (err) {
             showToast('Failed to send request', 'error');
