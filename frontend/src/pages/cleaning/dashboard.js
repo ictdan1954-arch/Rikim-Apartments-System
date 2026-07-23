@@ -9,7 +9,7 @@ export default async function cleanerDashboard(container) {
         ? sectionHash
         : null;
 
-    // ----- SINGLE-CARD VIEW -----
+    // ----- DEDICATED SINGLE-CARD VIEW (sidebar links) -----
     if (section) {
         container.innerHTML = `
             <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem;">
@@ -19,12 +19,11 @@ export default async function cleanerDashboard(container) {
         `;
         document.getElementById('section-content').innerHTML = getCardHTML(section);
         await loadSectionData(section);
-        // Listen for the next hash change so the "Back" button works
         window.addEventListener('hashchange', () => cleanerDashboard(container), { once: true });
         return;
     }
 
-    // ----- FULL DASHBOARD -----
+    // ----- DASHBOARD OVERVIEW (only summary cards, no details) -----
     container.innerHTML = `
         <div class="page-header">
             <h2>🧹 Cleaning Dashboard</h2>
@@ -59,50 +58,32 @@ export default async function cleanerDashboard(container) {
             <div class="card-body" id="announcements-container"><p>Loading...</p></div>
         </div>
 
-        <div class="card" id="tasks">
-            <div class="card-header">📋 My Tasks</div>
-            <div class="card-body" id="tasks-container"><p>Loading tasks...</p></div>
-        </div>
-
-        <div class="card" id="supplies">
-            <div class="card-header">🧴 Supplies</div>
-            <div class="card-body" id="supplies-container"><p>Loading supplies...</p></div>
-        </div>
-
         <div class="card" id="team">
             <div class="card-header">👥 My Team</div>
             <div class="card-body" id="team-container"><p>Loading team...</p></div>
         </div>
 
-        <div class="card" id="salary">
-            <div class="card-header">💰 My Salary</div>
-            <div class="card-body" id="salary-container"><p>Loading salary...</p></div>
-        </div>
-
-        <div class="card" id="messages">
-            <div class="card-header">💬 Messages</div>
-            <div class="card-body" id="messages-container">
-                <button id="open-chat-btn" class="btn btn-primary btn-sm">Chat with Caretaker</button>
-            </div>
+        <!-- Quick links to dedicated sections -->
+        <div style="display:flex; gap:1rem; margin-top:1rem; flex-wrap:wrap;">
+            <a href="#/cleaning/dashboard#tasks" class="btn btn-outline-primary btn-sm">📋 View My Tasks</a>
+            <a href="#/cleaning/dashboard#supplies" class="btn btn-outline-primary btn-sm">🧴 View Supplies</a>
+            <a href="#/cleaning/dashboard#salary" class="btn btn-outline-primary btn-sm">💰 View Salary</a>
+            <a href="#/cleaning/dashboard#messages" class="btn btn-outline-primary btn-sm">💬 Messages</a>
         </div>
     `;
 
+    // Load only overview data
     await Promise.allSettled([
         loadAttendance(),
         loadAnnouncements(),
-        loadTasks(),
-        loadSupplies(),
         loadTeam(),
-        loadSalary(),
-        loadMessages(),
         updateQuickStats()
     ]);
 
-    // Same hashchange listener to handle "Back to Dashboard" from a single-card view
     window.addEventListener('hashchange', () => cleanerDashboard(container), { once: true });
 }
 
-// ---------- Helpers for single-card view ----------
+// ---------- HELPERS ----------
 function getCardHTML(section) {
     switch (section) {
         case 'tasks':
@@ -127,7 +108,7 @@ async function loadSectionData(section) {
     }
 }
 
-// ---------- Data fetching functions (identical to your current ones) ----------
+// ---------- DATA FETCH FUNCTIONS (unchanged, except they now only run when section is present) ----------
 async function loadAttendance() {
     const container = document.getElementById('attendance-container');
     if (!container) return;
@@ -338,7 +319,7 @@ async function updateQuickStats() {
     const statCheckin = document.getElementById('stat-checkin');
     if (statCheckin) statCheckin.textContent = checkin || '--:--';
     const statAnn = document.getElementById('stat-announcements');
-    if (statAnn) statAnn.textContent = 3;
+    if (statAnn) statAnn.textContent = 3; // placeholder
 }
 
 async function showSupplyRequestModal() {
